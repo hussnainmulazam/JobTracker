@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
 
     # CORS origins: supports comma-separated string, JSON array, or Python list
-    CORS_ORIGINS: Union[list[str], str] = ["http://localhost:3000"]
+    CORS_ORIGINS: Union[list[str], str] = ["http://localhost:3000", "https://hrhiringloop.vercel.app"]
 
     # ── JWT ──────────────────────────────────────────────────────────────────
     # Overridden strictly by .env in production
@@ -123,16 +123,16 @@ class Settings(BaseSettings):
     # ── Google OAuth2 & Gmail Integration ────────────────────────────────────
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_LOGIN_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
-    GOOGLE_WORKSPACE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
+    GOOGLE_LOGIN_REDIRECT_URI: str = "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
+    GOOGLE_WORKSPACE_REDIRECT_URI: str = "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
     GOOGLE_PROJECT_ID: Optional[str] = None
     GOOGLE_AUTH_URI: str = "https://accounts.google.com/o/oauth2/auth"
     GOOGLE_TOKEN_URI: str = "https://oauth2.googleapis.com/token"
     GOOGLE_AUTH_PROVIDER_CERT_URL: Optional[str] = None
     GOOGLE_JAVASCRIPT_ORIGINS: Optional[str] = None
     GOOGLE_ENCRYPTION_KEY: Optional[str] = None
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "https://hrhiringloop.vercel.app"
 
     # Supabase Storage Integration
     SUPABASE_URL: Optional[str] = None

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { API_BASE_URL } from "@/lib/api";
+import { backendFetch } from "@/lib/api";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -61,8 +61,11 @@ export async function GET(request: Request) {
 
   // 3. Exchange code on backend & authenticate user
   try {
-    const redirectUri = `${origin}/api/auth/google/callback`;
-    const backendRes = await fetch(`${API_BASE_URL}/api/v1/auth/google`, {
+    const isVercel = origin.includes("hrhiringloop.vercel.app") || process.env.NEXTAUTH_URL?.includes("hrhiringloop.vercel.app");
+    const redirectUri = isVercel
+      ? "https://hrhiringloop.vercel.app/api/auth/callback/google"
+      : `${origin}/api/auth/callback/google`;
+    const backendRes = await backendFetch("/api/v1/auth/google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, redirect_uri: redirectUri }),

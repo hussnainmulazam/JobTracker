@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { API_BASE_URL } from "@/lib/api";
+import { backendFetch } from "@/lib/api";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+    const response = await backendFetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

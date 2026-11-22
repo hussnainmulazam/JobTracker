@@ -36,7 +36,7 @@ import {
   candidatesApi,
   jobOpeningsApi,
   JobOpening,
-  API_BASE_URL,
+  backendFetch,
   getAuthToken,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -382,8 +382,8 @@ export function KanbanBoard({ defaultSelectedCandidateId }: KanbanBoardProps = {
 
     try {
       const token = getAuthToken();
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/job-openings/${targetOpeningId}/shortlist/export`,
+      const res = await backendFetch(
+        `/api/v1/job-openings/${targetOpeningId}/shortlist/export`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }

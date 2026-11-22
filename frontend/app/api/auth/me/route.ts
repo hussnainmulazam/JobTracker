@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { API_BASE_URL } from "@/lib/api";
+import { backendFetch } from "@/lib/api";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+    const response = await backendFetch("/api/v1/auth/me", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

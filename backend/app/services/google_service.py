@@ -98,7 +98,9 @@ class GoogleService:
         redirect_uri = (
             os.getenv("GOOGLE_WORKSPACE_REDIRECT_URI")
             or settings.GOOGLE_WORKSPACE_REDIRECT_URI
-            or "http://localhost:8000/auth/google/callback"
+            or os.getenv("GOOGLE_REDIRECT_URI")
+            or settings.GOOGLE_REDIRECT_URI
+            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
         ).rstrip("/")
 
         # Signed state token: flow=workspace, encodes user_id and redirect_uri
@@ -149,7 +151,9 @@ class GoogleService:
             payload.get("redirect_uri")
             or os.getenv("GOOGLE_WORKSPACE_REDIRECT_URI")
             or settings.GOOGLE_WORKSPACE_REDIRECT_URI
-            or "http://localhost:8000/auth/google/callback"
+            or os.getenv("GOOGLE_REDIRECT_URI")
+            or settings.GOOGLE_REDIRECT_URI
+            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
         ).rstrip("/")
 
         # 2. Exchange authorization code for tokens

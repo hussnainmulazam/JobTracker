@@ -138,13 +138,27 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Configure CORS for frontend access (e.g. http://localhost:3000)
+# ── CORS Middleware Configuration ─────────────────────────────────────────────
+# Read allowed origins from env var CORS_ORIGINS (comma-separated), default: "http://localhost:3000"
+raw_cors_origins = os.getenv("CORS_ORIGINS")
+if raw_cors_origins:
+    cors_origins = [origin.strip() for origin in raw_cors_origins.split(",") if origin.strip()]
+elif isinstance(settings.CORS_ORIGINS, list):
+    cors_origins = settings.CORS_ORIGINS
+else:
+    cors_origins = [origin.strip() for origin in str(settings.CORS_ORIGINS).split(",") if origin.strip()]
+
+if not cors_origins:
+    cors_origins = ["http://localhost:3000"]
+
+# Always allow credentials, all methods, and all headers (including custom header ngrok-skip-browser-warning)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 

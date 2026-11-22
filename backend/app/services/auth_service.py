@@ -96,7 +96,9 @@ class AuthService:
         target_redirect_uri = (
             os.getenv("GOOGLE_LOGIN_REDIRECT_URI")
             or settings.GOOGLE_LOGIN_REDIRECT_URI
-            or "http://localhost:8000/auth/google/callback"
+            or os.getenv("GOOGLE_REDIRECT_URI")
+            or settings.GOOGLE_REDIRECT_URI
+            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
         ).rstrip("/")
 
         state = create_oauth_state(
@@ -154,7 +156,9 @@ class AuthService:
             (state_data.get("redirect_uri") if state_data else None)
             or os.getenv("GOOGLE_LOGIN_REDIRECT_URI")
             or settings.GOOGLE_LOGIN_REDIRECT_URI
-            or "http://localhost:8000/auth/google/callback"
+            or os.getenv("GOOGLE_REDIRECT_URI")
+            or settings.GOOGLE_REDIRECT_URI
+            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
         ).rstrip("/")
 
         # 1. Exchange authorization code for tokens

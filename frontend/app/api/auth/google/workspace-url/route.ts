@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { API_BASE_URL } from "@/lib/api";
+import { backendFetch, API_BASE_URL } from "@/lib/api";
 
 export async function GET(request: Request) {
   try {
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
     // Try primary API_BASE_URL
     try {
-      response = await fetch(`${API_BASE_URL}/api/v1/auth/google/login`, {
+      response = await backendFetch("/api/v1/auth/google/login", {
         method: "GET",
         headers,
         cache: "no-store",
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       if (API_BASE_URL.includes("localhost")) {
         const fallbackUrl = API_BASE_URL.replace("localhost", "127.0.0.1");
         try {
-          response = await fetch(`${fallbackUrl}/api/v1/auth/google/login`, {
+          response = await backendFetch(`${fallbackUrl}/api/v1/auth/google/login`, {
             method: "GET",
             headers,
             cache: "no-store",
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
     if (!response) {
       return NextResponse.json(
-        { detail: "FastAPI backend server is unreachable. Please ensure it is running on http://localhost:8000." },
+        { detail: `FastAPI backend server is unreachable. Please ensure it is running on ${API_BASE_URL}.` },
         { status: 503 }
       );
     }

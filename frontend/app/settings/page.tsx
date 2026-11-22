@@ -49,6 +49,7 @@ import {
 import {
   api,
   apiFetch,
+  API_BASE_URL,
   googleApi,
   jobOpeningsApi,
   healthApi,
@@ -576,7 +577,7 @@ function SettingsPageInner() {
       toast({
         title: "OAuth Initialization Failed",
         description: isNetworkErr
-          ? "Unable to reach backend server. Please verify that the FastAPI backend is running on http://localhost:8000."
+          ? `Unable to reach backend server. Please verify that the FastAPI backend is running on ${API_BASE_URL}.`
           : (err.message || "Failed to initialize Google authorization flow."),
         variant: "destructive",
       });

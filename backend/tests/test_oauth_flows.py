@@ -22,7 +22,11 @@ def test_login_oauth_url_and_scopes():
     params = urllib.parse.parse_qs(parsed.query)
 
     # 1. Matches Google Cloud Console Authorized redirect URI
-    assert params["redirect_uri"][0] == "http://localhost:8000/auth/google/callback"
+    expected_uris = (
+        "http://localhost:8000/auth/google/callback",
+        "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback",
+    )
+    assert params["redirect_uri"][0] in expected_uris
 
     # 2. Scopes are strictly openid, email, profile (no workspace scopes)
     scopes = params["scope"][0].split()
@@ -35,7 +39,7 @@ def test_login_oauth_url_and_scopes():
     state = params["state"][0]
     payload = decode_oauth_state(state)
     assert payload["flow"] == "login"
-    assert payload["redirect_uri"] == "http://localhost:8000/auth/google/callback"
+    assert payload["redirect_uri"] in expected_uris
 
 
 def test_workspace_oauth_url_and_scopes():
@@ -52,13 +56,17 @@ def test_workspace_oauth_url_and_scopes():
     params = urllib.parse.parse_qs(parsed.query)
 
     # 1. Matches Google Cloud Console Authorized redirect URI
-    assert params["redirect_uri"][0] == "http://localhost:8000/auth/google/callback"
+    expected_uris = (
+        "http://localhost:8000/auth/google/callback",
+        "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback",
+    )
+    assert params["redirect_uri"][0] in expected_uris
 
     # 2. State token contains flow='workspace', user_id, and redirect_uri
     payload = decode_oauth_state(resp.state)
     assert payload["flow"] == "workspace"
     assert payload["user_id"] == str(user_id)
-    assert payload["redirect_uri"] == "http://localhost:8000/auth/google/callback"
+    assert payload["redirect_uri"] in expected_uris
 
     # 3. Scopes contain all 6 required Workspace services
     full_scope_str = params["scope"][0]

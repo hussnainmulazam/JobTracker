@@ -5,8 +5,33 @@
  * Connects directly to FastAPI backend with JWT bearer authentication.
  */
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Clean trailing slashes reliably to avoid URL concatenation bugs
+export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
+
+export function getFullApiUrl(endpoint: string): string {
+  if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
+    return endpoint;
+  }
+  const cleanPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  return `${API_BASE_URL}${cleanPath}`;
+}
+
+/**
+ * Low-level backend fetch wrapper ensuring correct base URL and ngrok bypass headers.
+ */
+export async function backendFetch(
+  endpoint: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const url = getFullApiUrl(endpoint);
+  const headers = new Headers(init.headers);
+  headers.set("ngrok-skip-browser-warning", "true");
+  return fetch(url, {
+    ...init,
+    headers,
+  });
+}
 
 const TOKEN_STORAGE_KEY = "job_tracker_token";
 
@@ -486,13 +511,9 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { token, skipAuth = false, headers, ...customConfig } = options;
 
-  let url = endpoint;
-  if (!endpoint.startsWith("http://") && !endpoint.startsWith("https://")) {
-    const cleanPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-    url = `${API_BASE_URL}${cleanPath}`;
-  }
-
   const reqHeaders = new Headers(headers);
+  // Ensure ngrok browser warning skip header is present on every request
+  reqHeaders.set("ngrok-skip-browser-warning", "true");
 
   if (!skipAuth) {
     const activeToken = token ?? getAuthToken();
@@ -509,7 +530,7 @@ export async function apiFetch<T>(
     reqHeaders.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(url, {
+  const response = await backendFetch(endpoint, {
     ...customConfig,
     headers: reqHeaders,
   });
