@@ -1,4 +1,14 @@
-"""Google Workspace OAuth2 integration router (Settings > Google Workspace)."""
+"""
+Google OAuth2 authentication and Workspace integration router.
+
+Implements:
+1. GET /auth/google          — Redirects user to Google OAuth2 consent screen (openid, email, profile).
+2. GET /auth/google/callback — Exchanges code with Google via httpx, gets/creates SQLModel User,
+                               issues JWT in httpOnly cookie, and redirects to FRONTEND_URL/dashboard.
+3. GET /auth/me              — Returns current authenticated user verifying JWT (cookie or Bearer header).
+4. GET /auth/google/login    — Google Workspace offline consent URL (Calendar / Gmail).
+5. GET /integrations/google/url — Alias for Workspace consent URL.
+"""
 import urllib.parse
 import uuid
 from typing import Optional
@@ -10,43 +20,36 @@ from app.core.config import settings
 from app.core.dependencies import CurrentUser
 from app.core.security import decode_oauth_state
 from app.db import SessionDep
+from app.schemas.auth import UserPublic
 from app.schemas.google import GoogleAuthUrlResponse
 from app.services.auth_service import auth_service
 from app.services.google_service import GoogleService
 
-router = APIRouter(tags=["Google Workspace OAuth2"])
+router = APIRouter(tags=["Google OAuth2 & Workspace"])
 
+
+# ── 1. Google OAuth2 Login (Direct Redirect) ─────────────────────────────────
 
 @router.get(
-    "/auth/google/login",
-    response_model=GoogleAuthUrlResponse,
-    summary="Get Google Workspace OAuth2 authorization URL",
+    "/auth/google",
+    summary="Redirect to Google OAuth2 consent screen for login/signup",
 )
-@router.get(
-    "/integrations/google/url",
-    response_model=GoogleAuthUrlResponse,
-    summary="Get Google Workspace OAuth2 authorization URL (alias)",
-)
-def google_login(
-    current_user: CurrentUser,
-    session: SessionDep,
-    redirect: bool = Query(default=False),
-):
+def auth_google():
     """
-    Initiates Google Workspace OAuth2 authorization code flow with offline access (refresh token).
-    Encodes current authenticated recruiter user_id in signed state parameter with flow="workspace".
-    If redirect=true is specified, issues a direct 302 browser redirect to Google consent screen.
+    Initiates Google OAuth2 login flow.
+    Scopes: openid, email, profile.
+    Uses cryptographically signed state token for CSRF protection.
+    Issues a 302 browser redirect directly to Google consent screen.
     """
-    service = GoogleService(session)
-    res = service.generate_auth_url(current_user.id)
-    if redirect:
-        return RedirectResponse(url=res.auth_url, status_code=status.HTTP_302_FOUND)
-    return res
+    auth_url = auth_service.get_google_auth_url()
+    return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
 
+
+# ── 2. Google OAuth2 Callback ────────────────────────────────────────────────
 
 @router.get(
     "/auth/google/callback",
-    summary="Google OAuth2 callback redirect handler (supports both Workspace and Login flows)",
+    summary="Google OAuth2 callback redirect handler (Login and Workspace flows)",
 )
 def google_callback(
     session: SessionDep,
@@ -56,20 +59,22 @@ def google_callback(
 ):
     """
     Handles redirect callback from Google OAuth2 consent screen.
-    Dispatches based on signed state token:
-      - flow="workspace": exchanges code, stores encrypted refresh token, redirects to Settings > Google Workspace.
-      - flow="login": exchanges code, authenticates/creates user, issues JWT, sets cookie, redirects to /auth/callback.
+    Validates state parameter for CSRF safety.
+    Dispatches based on state flow:
+      - flow="login": exchanges code with Google using httpx, gets or creates SQLModel User row,
+                      issues JWT, sets secure httpOnly cookie, and redirects to FRONTEND_URL/dashboard.
+      - flow="workspace": exchanges code for refresh token and links Google Workspace account.
     """
     frontend_url = settings.FRONTEND_URL.rstrip("/")
 
-    # Detect flow from signed state
-    flow = "workspace"
+    # Detect flow from signed state token
+    flow = "login"
     if state:
         try:
             state_data = decode_oauth_state(state)
-            flow = state_data.get("flow", "workspace")
+            flow = state_data.get("flow", "login")
         except Exception:
-            flow = "workspace"
+            flow = "login"
 
     # 1. Google-level consent error or user denial
     if error:
@@ -107,7 +112,7 @@ def google_callback(
             status_code=status.HTTP_302_FOUND,
         )
 
-    # 3. Handle Flow A: User Login / Signup
+    # 3. Flow A: User Login / Signup
     if flow == "login":
         try:
             auth_res = auth_service.authenticate_google(session=session, code=code, state=state)
@@ -117,9 +122,9 @@ def google_callback(
                 status_code=status.HTTP_302_FOUND,
             )
 
-        setup_str = "true" if auth_res.setup_completed else "false"
         token = auth_res.access_token
-        redirect_url = f"{frontend_url}/auth/callback?token={urllib.parse.quote(token)}&setup_completed={setup_str}"
+        # Redirect user to FRONTEND_URL/dashboard (with token param for instant local storage sync)
+        redirect_url = f"{frontend_url}/dashboard?token={urllib.parse.quote(token)}"
         response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
         response.set_cookie(
             key="auth_token",
@@ -128,11 +133,11 @@ def google_callback(
             path="/",
             httponly=True,
             samesite="lax",
-            secure=False,
+            secure=frontend_url.startswith("https"),
         )
         return response
 
-    # 4. Handle Flow B: Workspace Connection (Settings > Google Workspace)
+    # 4. Flow B: Workspace Connection (Settings > Google Workspace)
     service = GoogleService(session)
     try:
         account, user_id = service.handle_callback(code, state)
@@ -145,3 +150,53 @@ def google_callback(
     status_param = "google_connected=1&partial=1" if account.last_sync_status == "partial_access" else "google_connected=1"
     redirect_target = f"{frontend_url}/settings?{status_param}&email={urllib.parse.quote(account.email)}&tab=google"
     return RedirectResponse(url=redirect_target, status_code=status.HTTP_302_FOUND)
+
+
+# ── 3. Current User Profile ──────────────────────────────────────────────────
+
+@router.get(
+    "/auth/me",
+    response_model=UserPublic,
+    summary="Get the currently authenticated user (verifies JWT from cookie or Bearer header)",
+)
+def get_auth_me(current_user: CurrentUser) -> UserPublic:
+    """
+    Returns the profile of the currently authenticated user.
+    Verifies JWT token passed via:
+      1. httpOnly 'auth_token' cookie (set during Google OAuth login)
+      2. 'Authorization: Bearer <token>' header
+    """
+    return UserPublic.model_validate(current_user)
+
+
+# ── 4. Workspace Flow Helpers ────────────────────────────────────────────────
+
+@router.get(
+    "/auth/google/login",
+    response_model=GoogleAuthUrlResponse,
+    summary="Get Google Workspace OAuth2 authorization URL",
+)
+@router.get(
+    "/api/v1/auth/google/login",
+    response_model=GoogleAuthUrlResponse,
+    summary="Get Google Workspace OAuth2 authorization URL (API v1 alias)",
+)
+@router.get(
+    "/integrations/google/url",
+    response_model=GoogleAuthUrlResponse,
+    summary="Get Google Workspace OAuth2 authorization URL (alias)",
+)
+def google_workspace_login(
+    current_user: CurrentUser,
+    session: SessionDep,
+    redirect: bool = Query(default=False),
+):
+    """
+    Initiates Google Workspace OAuth2 authorization code flow with offline access (refresh token).
+    Encodes current authenticated recruiter user_id in signed state parameter with flow="workspace".
+    """
+    service = GoogleService(session)
+    res = service.generate_auth_url(current_user.id)
+    if redirect:
+        return RedirectResponse(url=res.auth_url, status_code=status.HTTP_302_FOUND)
+    return res

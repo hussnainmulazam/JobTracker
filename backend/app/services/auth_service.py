@@ -78,7 +78,7 @@ class AuthService:
     # ── Google OAuth2 Login & Signup ──────────────────────────────────────────
 
     @staticmethod
-    def get_google_auth_url() -> str:
+    def get_google_auth_url(redirect_uri: Optional[str] = None) -> str:
         """
         Builds Google OAuth2 consent URL for recruiter login/signup.
         Requests openid, email, and profile scopes ONLY.
@@ -94,11 +94,12 @@ class AuthService:
             raise ValueError("GOOGLE_CLIENT_ID is not configured on the server.")
 
         target_redirect_uri = (
-            os.getenv("GOOGLE_LOGIN_REDIRECT_URI")
+            redirect_uri
+            or os.getenv("GOOGLE_LOGIN_REDIRECT_URI")
             or settings.GOOGLE_LOGIN_REDIRECT_URI
             or os.getenv("GOOGLE_REDIRECT_URI")
             or settings.GOOGLE_REDIRECT_URI
-            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
+            or "http://localhost:8000/auth/google/callback"
         ).rstrip("/")
 
         state = create_oauth_state(
@@ -123,6 +124,7 @@ class AuthService:
         session: Session,
         code: str,
         state: Optional[str] = None,
+        redirect_uri: Optional[str] = None,
     ) -> GoogleAuthResponse:
         """
         Exchanges Google auth code for tokens, verifies state and email,
@@ -153,12 +155,13 @@ class AuthService:
             raise ValueError("Google OAuth credentials are not configured on the server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
 
         target_redirect_uri = (
-            (state_data.get("redirect_uri") if state_data else None)
+            redirect_uri
+            or (state_data.get("redirect_uri") if state_data else None)
             or os.getenv("GOOGLE_LOGIN_REDIRECT_URI")
             or settings.GOOGLE_LOGIN_REDIRECT_URI
             or os.getenv("GOOGLE_REDIRECT_URI")
             or settings.GOOGLE_REDIRECT_URI
-            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
+            or "http://localhost:8000/auth/google/callback"
         ).rstrip("/")
 
         # 1. Exchange authorization code for tokens

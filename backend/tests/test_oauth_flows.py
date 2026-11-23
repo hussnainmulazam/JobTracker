@@ -22,11 +22,7 @@ def test_login_oauth_url_and_scopes():
     params = urllib.parse.parse_qs(parsed.query)
 
     # 1. Matches Google Cloud Console Authorized redirect URI
-    expected_uris = (
-        "http://localhost:8000/auth/google/callback",
-        "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback",
-    )
-    assert params["redirect_uri"][0] in expected_uris
+    assert params["redirect_uri"][0] == "http://localhost:8000/auth/google/callback"
 
     # 2. Scopes are strictly openid, email, profile (no workspace scopes)
     scopes = params["scope"][0].split()
@@ -39,7 +35,7 @@ def test_login_oauth_url_and_scopes():
     state = params["state"][0]
     payload = decode_oauth_state(state)
     assert payload["flow"] == "login"
-    assert payload["redirect_uri"] in expected_uris
+    assert payload["redirect_uri"] == "http://localhost:8000/auth/google/callback"
 
 
 def test_workspace_oauth_url_and_scopes():
@@ -56,17 +52,13 @@ def test_workspace_oauth_url_and_scopes():
     params = urllib.parse.parse_qs(parsed.query)
 
     # 1. Matches Google Cloud Console Authorized redirect URI
-    expected_uris = (
-        "http://localhost:8000/auth/google/callback",
-        "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback",
-    )
-    assert params["redirect_uri"][0] in expected_uris
+    assert params["redirect_uri"][0] == "http://localhost:8000/auth/google/callback"
 
     # 2. State token contains flow='workspace', user_id, and redirect_uri
     payload = decode_oauth_state(resp.state)
     assert payload["flow"] == "workspace"
     assert payload["user_id"] == str(user_id)
-    assert payload["redirect_uri"] in expected_uris
+    assert payload["redirect_uri"] == "http://localhost:8000/auth/google/callback"
 
     # 3. Scopes contain all 6 required Workspace services
     full_scope_str = params["scope"][0]
@@ -89,3 +81,57 @@ def test_dual_flow_state_separation():
 
     assert decoded_ws["flow"] == "workspace"
     assert decoded_ws["user_id"] == user_id
+
+
+def test_get_auth_google_redirect():
+    """Verifies that GET /auth/google issues a 302 redirect to Google consent screen."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app, follow_redirects=False)
+    resp = client.get("/auth/google")
+    assert resp.status_code == 302
+    assert "location" in resp.headers
+    target = resp.headers["location"]
+    assert "accounts.google.com" in target
+    assert "response_type=code" in target
+    assert "scope=" in target
+
+
+def test_get_auth_me_unauthorized_and_authorized():
+    """Verifies that GET /auth/me returns 401 when unauthenticated and 200 when authenticated via cookie or Bearer."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.security import create_access_token
+    from app.core.dependencies import get_current_user
+    from app.models.user import User
+
+    client = TestClient(app)
+
+    # 1. Unauthenticated -> 401
+    unauth_resp = client.get("/auth/me")
+    assert unauth_resp.status_code == 401
+
+    # 2. Authenticated with dummy token and user not in DB -> 401
+    dummy_user_id = str(uuid.uuid4())
+    token = create_access_token(subject=dummy_user_id)
+    cookie_resp = client.get("/auth/me", cookies={"auth_token": token})
+    assert cookie_resp.status_code == 401
+
+    # 3. Authenticated with injected current user -> 200
+    mock_user = User(
+        id=uuid.UUID(dummy_user_id),
+        email="test_recruiter@example.com",
+        hashed_password="fake_hashed_pw",
+    )
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    try:
+        auth_resp = client.get("/auth/me")
+        assert auth_resp.status_code == 200
+        data = auth_resp.json()
+        assert data["email"] == "test_recruiter@example.com"
+        assert data["id"] == dummy_user_id
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+

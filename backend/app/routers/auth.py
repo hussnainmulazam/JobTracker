@@ -145,13 +145,13 @@ def me(current_user: CurrentUser) -> UserPublic:
     "/google/url",
     summary="Get Google OAuth2 authorization URL for login / signup",
 )
-def google_auth_url():
+def google_auth_url(redirect_uri: Optional[str] = Query(default=None)):
     """
     Returns the Google OAuth2 consent URL for recruiter login/signup.
     Includes a signed state token to prevent CSRF and isolate the login flow.
     """
     try:
-        url = auth_service.get_google_auth_url()
+        url = auth_service.get_google_auth_url(redirect_uri=redirect_uri)
         return {"url": url}
     except ValueError as exc:
         raise HTTPException(

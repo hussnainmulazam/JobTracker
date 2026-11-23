@@ -88,31 +88,32 @@ class GoogleService:
 
     # ── 1. OAuth2 Authorization URL ──────────────────────────────────────────
 
-    def generate_auth_url(self, user_id: uuid.UUID) -> GoogleAuthUrlResponse:
+    def generate_auth_url(self, user_id: uuid.UUID, redirect_uri: Optional[str] = None) -> GoogleAuthUrlResponse:
         """
         Builds Google OAuth2 consent screen URL with offline access
         and prompt=consent so a refresh token is guaranteed.
         Encodes user_id into a tamper-proof signed state token.
         """
         client_id = settings.GOOGLE_CLIENT_ID or "placeholder-google-client-id"
-        redirect_uri = (
-            os.getenv("GOOGLE_WORKSPACE_REDIRECT_URI")
+        target_redirect_uri = (
+            redirect_uri
+            or os.getenv("GOOGLE_WORKSPACE_REDIRECT_URI")
             or settings.GOOGLE_WORKSPACE_REDIRECT_URI
             or os.getenv("GOOGLE_REDIRECT_URI")
             or settings.GOOGLE_REDIRECT_URI
-            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
+            or "http://localhost:8000/auth/google/callback"
         ).rstrip("/")
 
         # Signed state token: flow=workspace, encodes user_id and redirect_uri
         state = create_oauth_state(
             flow="workspace",
-            extra={"user_id": str(user_id), "redirect_uri": redirect_uri},
+            extra={"user_id": str(user_id), "redirect_uri": target_redirect_uri},
             expires_delta=timedelta(minutes=30),
         )
 
         params = {
             "client_id": client_id,
-            "redirect_uri": redirect_uri,
+            "redirect_uri": target_redirect_uri,
             "response_type": "code",
             "scope": " ".join(WORKSPACE_SCOPES),
             "access_type": "offline",
@@ -153,7 +154,7 @@ class GoogleService:
             or settings.GOOGLE_WORKSPACE_REDIRECT_URI
             or os.getenv("GOOGLE_REDIRECT_URI")
             or settings.GOOGLE_REDIRECT_URI
-            or "https://snowiness-reformer-copied.ngrok-free.dev/auth/google/callback"
+            or "http://localhost:8000/auth/google/callback"
         ).rstrip("/")
 
         # 2. Exchange authorization code for tokens
