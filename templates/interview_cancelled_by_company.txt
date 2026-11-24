@@ -1,0 +1,14 @@
+Dear {{candidate_name}},
+
+We sincerely apologize, but due to an unexpected scheduling conflict on our team, we need to cancel your upcoming {{round_name}} Interview for the {{job_title}} role originally scheduled on {{date}} at {{company_name}}.
+
+Please rest assured that your candidacy remains highly valued and in active consideration. We deeply respect your time and regret any inconvenience this sudden change may cause.
+
+Our recruiting coordinator will contact you within the next 24 hours with new interview options to reschedule this discussion at your earliest convenience.
+
+With our sincere apologies,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

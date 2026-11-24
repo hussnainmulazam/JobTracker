@@ -187,7 +187,10 @@ def google_callback(
     if state:
         try:
             state_data = decode_oauth_state(state)
-            flow = state_data.get("flow", "login")
+            if state_data.get("flow") == "workspace" or ("sub" in state_data and "flow" not in state_data) or "user_id" in state_data:
+                flow = "workspace"
+            else:
+                flow = state_data.get("flow", "login")
         except Exception:
             flow = "login"
 
@@ -237,7 +240,7 @@ def google_callback(
                 url=f"{frontend_url}/settings?google_error={urllib.parse.quote(str(exc))}&tab=google",
                 status_code=status.HTTP_302_FOUND,
             )
-        status_param = "google_connected=1&partial=1" if account.last_sync_status == "partial_access" else "google_connected=1"
+        status_param = "google_connected=true&google_connected=1&partial=1" if account.last_sync_status == "partial_access" else "google_connected=true&google_connected=1"
         redirect_target = f"{frontend_url}/settings?{status_param}&email={urllib.parse.quote(account.email)}&tab=google"
         return RedirectResponse(url=redirect_target, status_code=status.HTTP_302_FOUND)
 

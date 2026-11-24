@@ -1,0 +1,16 @@
+Dear {{candidate_name}},
+
+We are pleased to inform you that you have successfully cleared the {{round_name}} Interview for the {{job_title}} position at {{company_name}}!
+
+The interviewers were very impressed with your structured communication, professional depth, and domain knowledge throughout the conversation.
+
+STATUS: Passed {{round_name}} - Advancing to Next Stage
+
+Our recruiting coordinator will be in touch within 24 to 48 hours with full preparation notes and scheduling instructions for your next session. Keep up the wonderful work!
+
+Warm regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

@@ -1,0 +1,19 @@
+Dear {{candidate_name}},
+
+Thank you for your interest in joining {{company_name}}. We are pleased to confirm that we have received your resume and application materials for the {{job_title}} position.
+
+APPLICATION SUMMARY:
+- Position: {{job_title}}
+- Organization: {{company_name}}
+- Current Status: Under Review
+
+Our talent acquisition team is actively evaluating your qualifications, achievements, and technical background against the specific objectives of this role.
+
+If your profile meets our current requirements, we will reach out directly with instructions regarding the next phase of our interview process. Thank you again for your time, effort, and interest in our organization.
+
+Warm regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

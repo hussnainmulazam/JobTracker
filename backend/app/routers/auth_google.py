@@ -72,7 +72,10 @@ def google_callback(
     if state:
         try:
             state_data = decode_oauth_state(state)
-            flow = state_data.get("flow", "login")
+            if state_data.get("flow") == "workspace" or ("sub" in state_data and "flow" not in state_data) or "user_id" in state_data:
+                flow = "workspace"
+            else:
+                flow = state_data.get("flow", "login")
         except Exception:
             flow = "login"
 
@@ -123,8 +126,8 @@ def google_callback(
             )
 
         token = auth_res.access_token
-        # Redirect user to FRONTEND_URL/dashboard (with token param for instant local storage sync)
-        redirect_url = f"{frontend_url}/dashboard?token={urllib.parse.quote(token)}"
+        # Redirect user to FRONTEND_URL/auth/callback (with token param for instant local storage sync)
+        redirect_url = f"{frontend_url}/auth/callback?token={urllib.parse.quote(token)}&setup_completed={str(auth_res.setup_completed).lower()}"
         response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
         response.set_cookie(
             key="auth_token",
@@ -147,7 +150,7 @@ def google_callback(
             status_code=status.HTTP_302_FOUND,
         )
 
-    status_param = "google_connected=1&partial=1" if account.last_sync_status == "partial_access" else "google_connected=1"
+    status_param = "google_connected=true&google_connected=1&partial=1" if account.last_sync_status == "partial_access" else "google_connected=true&google_connected=1"
     redirect_target = f"{frontend_url}/settings?{status_param}&email={urllib.parse.quote(account.email)}&tab=google"
     return RedirectResponse(url=redirect_target, status_code=status.HTTP_302_FOUND)
 

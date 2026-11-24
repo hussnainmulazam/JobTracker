@@ -1,0 +1,19 @@
+Dear {{candidate_name}},
+
+Thank you for sharing your availability for the {{round_name}} Interview for the {{job_title}} role at {{company_name}}.
+
+Unfortunately, our interviewing panel has preexisting scheduling conflicts during the specific windows you proposed. To ensure we keep your candidacy moving forward smoothly, we would like to offer the following alternate slots:
+
+ALTERNATE SLOTS:
+1. {{slot_1}}
+2. {{slot_2}}
+3. {{slot_3}}
+
+Please reply directly to this email by {{reply_deadline}} indicating which option works best for you. If none of these slots fit your schedule, please propose 2 to 3 alternative windows with your timezone.
+
+Warm regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

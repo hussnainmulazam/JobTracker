@@ -1,0 +1,11 @@
+Hello {{hr_name}},
+
+Candidate {{candidate_name}} ({{candidate_email}}) has replied with their proposed availability for the {{round_name}} Interview for the {{job_title}} position at {{company_name}}.
+
+NEXT ACTION REQUIRED:
+Open the Recruiting Inbox, review the candidate's proposed time slots against team calendars, and dispatch the interview confirmation.
+
+Automated Notification System
+{{company_name}} Recruiting
+Email: {{company_email}}
+Website: {{company_website}}

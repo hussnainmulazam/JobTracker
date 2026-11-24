@@ -1,0 +1,684 @@
+{
+  "version": "1.0.0",
+  "system": "Automated Hiring Pipeline Email Templates",
+  "description": "Registry of production-ready responsive email templates for each hiring stage.",
+  "global_variables": [
+    "candidate_name",
+    "candidate_email",
+    "job_title",
+    "company_name",
+    "hr_name",
+    "company_email",
+    "company_website",
+    "round_name",
+    "date",
+    "time",
+    "timezone",
+    "meeting_link",
+    "feedback",
+    "job_description",
+    "round_description",
+    "slot_1",
+    "slot_2",
+    "slot_3",
+    "reply_deadline",
+    "offer_attachment_note",
+    "brand_color"
+  ],
+  "categories": {
+    "core": [
+      "cv_received",
+      "application_rejected",
+      "application_approved",
+      "interview_confirmed",
+      "alternate_slots",
+      "next_round_availability",
+      "interview_passed",
+      "interview_rejected",
+      "all_rounds_cleared"
+    ],
+    "supporting": [
+      "interview_reminder_24h",
+      "interview_reminder_1h",
+      "no_response_followup",
+      "application_closed_no_response",
+      "interview_rescheduled",
+      "interview_cancelled_by_company",
+      "candidate_cancelled_confirmation",
+      "candidate_no_show",
+      "cv_unreadable_or_unsupported_format",
+      "duplicate_application",
+      "application_on_hold",
+      "documents_request",
+      "offer_letter_cover",
+      "offer_accepted_confirmation",
+      "offer_declined_acknowledgement",
+      "welcome_onboarding"
+    ],
+    "internal": [
+      "hr_new_cv_scored",
+      "hr_candidate_replied_availability",
+      "hr_interview_scheduled",
+      "hr_interviewer_reminder",
+      "hr_pending_decision_reminder",
+      "hr_candidate_moved_to_offer_section"
+    ]
+  },
+  "templates": {
+    "cv_received": {
+      "id": "cv_received",
+      "subject": "Application Received: {{job_title}} at {{company_name}}",
+      "preheader": "We have received your application for the {{job_title}} position at {{company_name}}.",
+      "trigger_event": "Candidate submits CV via Gmail or job application form.",
+      "next_step": "AI parses and scores candidate CV; HR reviews candidate scorecard.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "cv_received.html",
+      "text_file": "cv_received.txt"
+    },
+    "application_rejected": {
+      "id": "application_rejected",
+      "subject": "Update regarding your application for {{job_title}} at {{company_name}}",
+      "preheader": "Thank you for your interest in the {{job_title}} position at {{company_name}}.",
+      "trigger_event": "HR reviews candidate CV scorecard and marks application as rejected.",
+      "next_step": "Candidate profile archived; candidate eligible for future openings.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "feedback",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "application_rejected.html",
+      "text_file": "application_rejected.txt"
+    },
+    "application_approved": {
+      "id": "application_approved",
+      "subject": "Congratulations! Next Steps for {{job_title}} at {{company_name}}",
+      "preheader": "Your application for {{job_title}} has been approved. Please share your availability.",
+      "trigger_event": "HR approves candidate screening; candidate shortlisted for initial interview.",
+      "next_step": "Candidate replies with 2-3 availability time slots for Initial Interview.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_description",
+        "job_title",
+        "reply_deadline"
+      ],
+      "html_file": "application_approved.html",
+      "text_file": "application_approved.txt"
+    },
+    "interview_confirmed": {
+      "id": "interview_confirmed",
+      "subject": "Confirmed: {{round_name}} Interview for {{job_title}} - {{date}}",
+      "preheader": "Your {{round_name}} Interview for {{job_title}} is scheduled for {{date}} at {{time}} {{timezone}}.",
+      "trigger_event": "Recruiter schedules interview round in calendar.",
+      "next_step": "Candidate and interviewer join video meeting at confirmed time.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "date",
+        "hr_name",
+        "job_title",
+        "meeting_link",
+        "round_name",
+        "time",
+        "timezone"
+      ],
+      "html_file": "interview_confirmed.html",
+      "text_file": "interview_confirmed.txt"
+    },
+    "alternate_slots": {
+      "id": "alternate_slots",
+      "subject": "Scheduling Your {{round_name}} Interview: Alternate Times for {{job_title}}",
+      "preheader": "Please review alternate interview times for your {{round_name}} Interview.",
+      "trigger_event": "Candidate proposed slots conflict with interviewer calendar availability.",
+      "next_step": "Candidate picks one alternate slot or suggests new times by reply deadline.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "reply_deadline",
+        "round_name",
+        "slot_1",
+        "slot_2",
+        "slot_3"
+      ],
+      "html_file": "alternate_slots.html",
+      "text_file": "alternate_slots.txt"
+    },
+    "next_round_availability": {
+      "id": "next_round_availability",
+      "subject": "You're Moving Forward! Availability for {{round_name}} Interview - {{company_name}}",
+      "preheader": "Congratulations on passing your previous round! Next step: {{round_name}} Interview.",
+      "trigger_event": "Candidate passes previous interview round; advance to next round.",
+      "next_step": "Candidate replies with availability slots for the next round.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "reply_deadline",
+        "round_description",
+        "round_name"
+      ],
+      "html_file": "next_round_availability.html",
+      "text_file": "next_round_availability.txt"
+    },
+    "interview_passed": {
+      "id": "interview_passed",
+      "subject": "Great news regarding your {{round_name}} Interview for {{job_title}}",
+      "preheader": "You have successfully passed the {{round_name}} Interview for {{job_title}} at {{company_name}}!",
+      "trigger_event": "Interviewer/HR logs passing scorecard for Initial or Behavioral round.",
+      "next_step": "Recruiter sends next_round_availability with specific round expectations.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "round_name"
+      ],
+      "html_file": "interview_passed.html",
+      "text_file": "interview_passed.txt"
+    },
+    "interview_rejected": {
+      "id": "interview_rejected",
+      "subject": "Update on your interview for {{job_title}} at {{company_name}}",
+      "preheader": "Thank you for taking the time to interview with us for the {{job_title}} position.",
+      "trigger_event": "Candidate rejected following any interview round evaluation.",
+      "next_step": "Candidate file closed; feedback recorded in pipeline archive.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "feedback",
+        "hr_name",
+        "job_title",
+        "round_name"
+      ],
+      "html_file": "interview_rejected.html",
+      "text_file": "interview_rejected.txt"
+    },
+    "all_rounds_cleared": {
+      "id": "all_rounds_cleared",
+      "subject": "Congratulations! You have cleared all interview rounds for {{job_title}} at {{company_name}}",
+      "preheader": "You have successfully completed all interview stages for {{job_title}} at {{company_name}}!",
+      "trigger_event": "Candidate clears final technical round with positive recommendation.",
+      "next_step": "HR prepares offer letter and schedules offer review call.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "all_rounds_cleared.html",
+      "text_file": "all_rounds_cleared.txt"
+    },
+    "interview_reminder_24h": {
+      "id": "interview_reminder_24h",
+      "subject": "Reminder: {{round_name}} Interview Tomorrow - {{job_title}} at {{company_name}}",
+      "preheader": "Your {{round_name}} Interview is scheduled for tomorrow at {{time}} {{timezone}}.",
+      "trigger_event": "24 hours prior to scheduled interview round.",
+      "next_step": "Candidate verifies readiness and attends interview on schedule.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "date",
+        "hr_name",
+        "job_title",
+        "meeting_link",
+        "round_name",
+        "time",
+        "timezone"
+      ],
+      "html_file": "interview_reminder_24h.html",
+      "text_file": "interview_reminder_24h.txt"
+    },
+    "interview_reminder_1h": {
+      "id": "interview_reminder_1h",
+      "subject": "Starting in 1 Hour: {{round_name}} Interview for {{job_title}}",
+      "preheader": "Your {{round_name}} Interview begins at {{time}} {{timezone}}. Meeting link enclosed.",
+      "trigger_event": "1 hour prior to scheduled interview round.",
+      "next_step": "Candidate joins video call room 5 minutes early.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "meeting_link",
+        "round_name",
+        "time",
+        "timezone"
+      ],
+      "html_file": "interview_reminder_1h.html",
+      "text_file": "interview_reminder_1h.txt"
+    },
+    "no_response_followup": {
+      "id": "no_response_followup",
+      "subject": "Following up: Next steps for {{job_title}} at {{company_name}}",
+      "preheader": "Just checking in regarding your interview scheduling for {{job_title}}.",
+      "trigger_event": "Candidate has not replied 48 hours after availability request.",
+      "next_step": "Candidate replies with time slots before reply deadline.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "reply_deadline"
+      ],
+      "html_file": "no_response_followup.html",
+      "text_file": "no_response_followup.txt"
+    },
+    "application_closed_no_response": {
+      "id": "application_closed_no_response",
+      "subject": "Application Closed: {{job_title}} at {{company_name}}",
+      "preheader": "Notice regarding your application status for {{job_title}} at {{company_name}}.",
+      "trigger_event": "Reply deadline elapsed without response from candidate.",
+      "next_step": "Application archived; candidate can reapply in the future.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "application_closed_no_response.html",
+      "text_file": "application_closed_no_response.txt"
+    },
+    "interview_rescheduled": {
+      "id": "interview_rescheduled",
+      "subject": "Rescheduled: {{round_name}} Interview for {{job_title}} - {{date}}",
+      "preheader": "Your {{round_name}} Interview has been rescheduled to {{date}} at {{time}} {{timezone}}.",
+      "trigger_event": "Interview rescheduled due to candidate or interviewer calendar adjustment.",
+      "next_step": "Candidate and interviewer attend interview at updated date and time.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "date",
+        "hr_name",
+        "job_title",
+        "meeting_link",
+        "round_name",
+        "time",
+        "timezone"
+      ],
+      "html_file": "interview_rescheduled.html",
+      "text_file": "interview_rescheduled.txt"
+    },
+    "interview_cancelled_by_company": {
+      "id": "interview_cancelled_by_company",
+      "subject": "Notice: Cancellation of {{round_name}} Interview for {{job_title}}",
+      "preheader": "Important update regarding your scheduled {{round_name}} Interview on {{date}}.",
+      "trigger_event": "Company cancels interview due to unforeseen internal conflict or emergency.",
+      "next_step": "Recruiter follows up within 24 hours to re-coordinate interview timing.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "date",
+        "hr_name",
+        "job_title",
+        "round_name"
+      ],
+      "html_file": "interview_cancelled_by_company.html",
+      "text_file": "interview_cancelled_by_company.txt"
+    },
+    "candidate_cancelled_confirmation": {
+      "id": "candidate_cancelled_confirmation",
+      "subject": "Confirmation of Interview Cancellation: {{job_title}} at {{company_name}}",
+      "preheader": "We have processed your interview cancellation for the {{round_name}} round.",
+      "trigger_event": "Candidate requests interview cancellation.",
+      "next_step": "Assess whether candidate requests reschedule or formal application withdrawal.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "round_name"
+      ],
+      "html_file": "candidate_cancelled_confirmation.html",
+      "text_file": "candidate_cancelled_confirmation.txt"
+    },
+    "candidate_no_show": {
+      "id": "candidate_no_show",
+      "subject": "We missed you today: {{round_name}} Interview for {{job_title}}",
+      "preheader": "We were unable to connect with you for your {{round_name}} Interview on {{date}}.",
+      "trigger_event": "Candidate does not attend interview call after 15-minute grace period.",
+      "next_step": "Candidate replies within 24 hours to explain absence or reschedule.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "date",
+        "hr_name",
+        "job_title",
+        "reply_deadline",
+        "round_name"
+      ],
+      "html_file": "candidate_no_show.html",
+      "text_file": "candidate_no_show.txt"
+    },
+    "cv_unreadable_or_unsupported_format": {
+      "id": "cv_unreadable_or_unsupported_format",
+      "subject": "Action Required: Please resend your resume for {{job_title}}",
+      "preheader": "We were unable to parse your resume attachment for the {{job_title}} position.",
+      "trigger_event": "Automated CV extraction fails due to corrupted or unsupported file format.",
+      "next_step": "Candidate resends resume in valid PDF or DOCX format.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "cv_unreadable_or_unsupported_format.html",
+      "text_file": "cv_unreadable_or_unsupported_format.txt"
+    },
+    "duplicate_application": {
+      "id": "duplicate_application",
+      "subject": "Notice Regarding Duplicate Application for {{job_title}} at {{company_name}}",
+      "preheader": "We noticed multiple submissions for the {{job_title}} position.",
+      "trigger_event": "Candidate submits duplicate application for the same role.",
+      "next_step": "Active candidate profile remains in review pipeline.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "duplicate_application.html",
+      "text_file": "duplicate_application.txt"
+    },
+    "application_on_hold": {
+      "id": "application_on_hold",
+      "subject": "Application Status Update: {{job_title}} at {{company_name}}",
+      "preheader": "Your profile for {{job_title}} has been added to our Talent Pool.",
+      "trigger_event": "Role paused, requisition frozen, or candidate tagged for talent pool.",
+      "next_step": "Candidate profile preserved in talent pool for future outreach.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "application_on_hold.html",
+      "text_file": "application_on_hold.txt"
+    },
+    "documents_request": {
+      "id": "documents_request",
+      "subject": "Document Request: Pre-Offer Verification for {{job_title}}",
+      "preheader": "Please provide required verification documents for your {{job_title}} application.",
+      "trigger_event": "Candidate clears interview pipeline; pre-offer background verification initiated.",
+      "next_step": "Candidate uploads or replies with required compliance documentation.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "reply_deadline"
+      ],
+      "html_file": "documents_request.html",
+      "text_file": "documents_request.txt"
+    },
+    "offer_letter_cover": {
+      "id": "offer_letter_cover",
+      "subject": "Offer of Employment: {{job_title}} at {{company_name}}",
+      "preheader": "We are thrilled to offer you the position of {{job_title}} at {{company_name}}!",
+      "trigger_event": "HR manually dispatches official offer letter package.",
+      "next_step": "Candidate reviews, signs, and returns offer letter before deadline.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "offer_attachment_note",
+        "reply_deadline"
+      ],
+      "html_file": "offer_letter_cover.html",
+      "text_file": "offer_letter_cover.txt"
+    },
+    "offer_accepted_confirmation": {
+      "id": "offer_accepted_confirmation",
+      "subject": "Welcome to the Team! Offer Acceptance Confirmed - {{company_name}}",
+      "preheader": "We have received your signed offer letter for {{job_title}}. Welcome aboard!",
+      "trigger_event": "Candidate signs and returns offer letter.",
+      "next_step": "People Ops initiates pre-boarding and IT provisioning workflows.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "offer_accepted_confirmation.html",
+      "text_file": "offer_accepted_confirmation.txt"
+    },
+    "offer_declined_acknowledgement": {
+      "id": "offer_declined_acknowledgement",
+      "subject": "Acknowledgement of Offer Decision: {{job_title}} at {{company_name}}",
+      "preheader": "Thank you for your consideration regarding the {{job_title}} position.",
+      "trigger_event": "Candidate declines employment offer.",
+      "next_step": "Requisition reopened or next ranked candidate contacted.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "offer_declined_acknowledgement.html",
+      "text_file": "offer_declined_acknowledgement.txt"
+    },
+    "welcome_onboarding": {
+      "id": "welcome_onboarding",
+      "subject": "Welcome to {{company_name}}! Onboarding Information for {{job_title}}",
+      "preheader": "Important onboarding instructions and Day 1 details for {{candidate_name}}.",
+      "trigger_event": "3-5 days prior to new hire start date.",
+      "next_step": "Candidate reviews Day 1 schedule and prepares for orientation.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "welcome_onboarding.html",
+      "text_file": "welcome_onboarding.txt"
+    },
+    "hr_new_cv_scored": {
+      "id": "hr_new_cv_scored",
+      "subject": "[Action Required] New Candidate Scored: {{candidate_name}} for {{job_title}}",
+      "preheader": "New candidate application parsed and scored for {{job_title}}. Ready for review.",
+      "trigger_event": "New candidate CV parsed, contact extracted, and initial screening score computed.",
+      "next_step": "HR reviews candidate profile and scorecard to Approve or Reject.",
+      "required_variables": [
+        "brand_color",
+        "candidate_email",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "hr_new_cv_scored.html",
+      "text_file": "hr_new_cv_scored.txt"
+    },
+    "hr_candidate_replied_availability": {
+      "id": "hr_candidate_replied_availability",
+      "subject": "[Action Required] Availability Received: {{candidate_name}} for {{round_name}}",
+      "preheader": "{{candidate_name}} has submitted availability for {{round_name}} Interview.",
+      "trigger_event": "Candidate replies with time slots for interview scheduling.",
+      "next_step": "Recruiter selects best time, schedules calendar event, and confirms with candidate.",
+      "required_variables": [
+        "brand_color",
+        "candidate_email",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "round_name"
+      ],
+      "html_file": "hr_candidate_replied_availability.html",
+      "text_file": "hr_candidate_replied_availability.txt"
+    },
+    "hr_interview_scheduled": {
+      "id": "hr_interview_scheduled",
+      "subject": "[Scheduled] {{round_name}} Interview: {{candidate_name}} for {{job_title}}",
+      "preheader": "{{round_name}} interview scheduled for {{candidate_name}} on {{date}} at {{time}} {{timezone}}.",
+      "trigger_event": "Interview calendar invitation generated and sent.",
+      "next_step": "Interviewer prepares evaluation notes and joins session at scheduled time.",
+      "required_variables": [
+        "brand_color",
+        "candidate_email",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "date",
+        "hr_name",
+        "job_title",
+        "meeting_link",
+        "round_name",
+        "time",
+        "timezone"
+      ],
+      "html_file": "hr_interview_scheduled.html",
+      "text_file": "hr_interview_scheduled.txt"
+    },
+    "hr_interviewer_reminder": {
+      "id": "hr_interviewer_reminder",
+      "subject": "[Reminder] Upcoming Interview Today: {{candidate_name}} ({{round_name}})",
+      "preheader": "Reminder: You have an interview with {{candidate_name}} starting at {{time}} {{timezone}}.",
+      "trigger_event": "2 hours prior to scheduled interview round.",
+      "next_step": "Interviewer conducts interview and fills scorecard.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "meeting_link",
+        "round_name",
+        "time",
+        "timezone"
+      ],
+      "html_file": "hr_interviewer_reminder.html",
+      "text_file": "hr_interviewer_reminder.txt"
+    },
+    "hr_pending_decision_reminder": {
+      "id": "hr_pending_decision_reminder",
+      "subject": "[Pending Decision] Action Needed for {{candidate_name}} - {{job_title}}",
+      "preheader": "48 hours have elapsed without a decision logged for {{candidate_name}} ({{round_name}}).",
+      "trigger_event": "Candidate remains in pending state 48 hours after interview or scoring.",
+      "next_step": "HR or hiring manager reviews scorecard and logs an Approve or Reject decision.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title",
+        "round_name"
+      ],
+      "html_file": "hr_pending_decision_reminder.html",
+      "text_file": "hr_pending_decision_reminder.txt"
+    },
+    "hr_candidate_moved_to_offer_section": {
+      "id": "hr_candidate_moved_to_offer_section",
+      "subject": "[Action Required] Prepare Offer Letter: {{candidate_name}} - {{job_title}}",
+      "preheader": "{{candidate_name}} has passed all interview rounds. Ready for offer generation.",
+      "trigger_event": "Candidate clears final technical round and moves to offer stage.",
+      "next_step": "HR and executive leadership draft compensation terms and generate offer document.",
+      "required_variables": [
+        "brand_color",
+        "candidate_name",
+        "company_email",
+        "company_name",
+        "company_website",
+        "hr_name",
+        "job_title"
+      ],
+      "html_file": "hr_candidate_moved_to_offer_section.html",
+      "text_file": "hr_candidate_moved_to_offer_section.txt"
+    }
+  }
+}

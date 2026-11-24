@@ -56,6 +56,8 @@ class TemplateNotFoundError(TemplateMissingOrDisabledError):
 
 
 TEMPLATE_ALIASES: Dict[str, str] = {
+    "interview_invitation": "initial_interview",
+    "interview_invite": "initial_interview",
     "application_rejected": "rejection",
     "interview_rejected": "rejection",
     "application_approved": "cv_passed",

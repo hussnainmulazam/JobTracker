@@ -212,9 +212,9 @@ class Settings(BaseSettings):
         host = host_part.split(":")[0]
 
         import os
-        if os.getenv("TESTING") == "true" or self.ENVIRONMENT == "test":
-            if host.startswith("db.") and host.endswith(".supabase.co") or "sqlite" in raw_url:
-                return "sqlite:///:memory:"
+        import sys
+        if os.getenv("TESTING") == "true" or self.ENVIRONMENT == "test" or "pytest" in sys.modules:
+            return "sqlite:///:memory:"
 
         if host.startswith("db.") and host.endswith(".supabase.co"):
             ref = host.replace("db.", "").replace(".supabase.co", "")

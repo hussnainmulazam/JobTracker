@@ -52,20 +52,16 @@ from app.services.extractor_service import extract_all_deterministic_fields
 
 logger = logging.getLogger(__name__)
 
-# Required Google Workspace API Scopes as specified by user
+# Required Google Workspace API Scopes as specified by user (exactly 8 scopes)
 WORKSPACE_SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
-    "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/calendar.events",
-    "https://www.googleapis.com/auth/meetings.space.created",
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/documents",
-    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/calendar.freebusy",
+    "https://www.googleapis.com/auth/drive.file",
 ]
 GOOGLE_SCOPES = WORKSPACE_SCOPES
 
@@ -141,10 +137,11 @@ class GoogleService:
         except Exception:
             raise ValueError("Invalid or expired OAuth state parameter.")
 
-        if not payload or payload.get("flow") != "workspace" or not payload.get("user_id"):
+        user_id_raw = payload.get("user_id") or payload.get("sub")
+        if not payload or not user_id_raw:
             raise ValueError("OAuth state parameter mismatch: expected workspace flow.")
 
-        user_id = uuid.UUID(payload["user_id"])
+        user_id = uuid.UUID(str(user_id_raw))
 
         client_id = settings.GOOGLE_CLIENT_ID
         client_secret = settings.GOOGLE_CLIENT_SECRET
@@ -463,13 +460,10 @@ class GoogleService:
             if norm(req) not in granted_norms:
                 missing_scopes.append(req)
 
-        # Service-level grant detection for the 6 required Workspace services
+        # Service-level grant detection for the required Workspace services
         granted_services = {
             "Gmail": any("gmail" in s for s in granted_norms),
             "Calendar": any("calendar" in s for s in granted_norms),
-            "Meet": any("meetings" in s or "calendar" in s for s in granted_norms),
-            "Sheets": any("spreadsheets" in s for s in granted_norms),
-            "Docs": any("documents" in s for s in granted_norms),
             "Drive": any("drive" in s for s in granted_norms),
         }
 
@@ -481,7 +475,7 @@ class GoogleService:
             reconnect_reason = "Google OAuth refresh token has expired or was revoked. Please reconnect."
         elif not all(granted_services.values()) or missing_scopes:
             reconnect_needed = True
-            reconnect_reason = "Partial access, reconnect to grant all"
+            reconnect_reason = "Missing required permissions. Please reconnect to grant all requested scopes."
 
         default_title: Optional[str] = None
         if account.default_opening_id:

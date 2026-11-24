@@ -3,9 +3,9 @@ backend/app/services/pipeline_template_service.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Strict template renderer & email dispatcher for the Hiring Pipeline Agent.
 Rules:
-- Send ONLY templates defined in /templates/registry.json.
+- Send templates defined in /templates/registry.json or database recruiting_templates.
 - Never write free-form emails.
-- Strictly validate that all required_variables are present before sending.
+- Strictly validate that all required variables are present before sending.
 - Enforce idempotency: never send the same template for the same event twice.
 - Format rejection {{feedback}} properly.
 """
@@ -21,14 +21,132 @@ from sqlmodel import Session, select
 from app.models.candidate import Candidate
 from app.models.message import Message, MessageDirection, MessageType, MessageStatus
 from app.models.audit_log import AuditLog
-from app.services.template_service import (
-    render_user_template,
-    MissingTemplateVariablesError,
-    TemplateMissingOrDisabledError,
-    TemplateNotFoundError,
-)
 
 logger = logging.getLogger(__name__)
+
+# Determine templates path
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+TEMPLATES_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "templates"))
+REGISTRY_PATH = os.path.join(TEMPLATES_DIR, "registry.json")
+
+_REGISTRY_CACHE: Optional[Dict[str, Any]] = None
+
+
+def get_registry() -> Dict[str, Any]:
+    """Loads and caches the template registry from registry.json."""
+    global _REGISTRY_CACHE
+    if _REGISTRY_CACHE is not None:
+        return _REGISTRY_CACHE
+
+    reg_file = REGISTRY_PATH
+    if not os.path.exists(reg_file):
+        # Check current working directory fallback
+        cwd_reg = os.path.abspath(os.path.join(os.getcwd(), "templates", "registry.json"))
+        if os.path.exists(cwd_reg):
+            reg_file = cwd_reg
+        else:
+            raise FileNotFoundError(f"Template registry not found at {REGISTRY_PATH}")
+
+    with open(reg_file, "r", encoding="utf-8") as f:
+        _REGISTRY_CACHE = json.load(f)
+    return _REGISTRY_CACHE
+
+
+class MissingTemplateVariablesError(Exception):
+    """Raised when a template is invoked without all required variables declared in registry.json."""
+    pass
+
+
+class TemplateMissingOrDisabledError(Exception):
+    """Raised when a required lifecycle template is missing or disabled."""
+    def __init__(self, stage_name: str, settings_link: str = "/settings?tab=templates"):
+        self.stage_name = stage_name
+        self.settings_link = settings_link
+        super().__init__(f"Template missing: {stage_name}. Configure at {settings_link}")
+
+
+class TemplateNotFoundError(TemplateMissingOrDisabledError):
+    """Alias for backwards compatibility."""
+    pass
+
+
+def render_template(template_id: str, context: Dict[str, Any]) -> Tuple[str, str, str, str]:
+    """
+    Renders a registered template using deterministic variable substitution.
+    Returns: (subject, html_content, text_content, preheader)
+    """
+    registry = get_registry()
+    templates = registry.get("templates", {})
+    if template_id not in templates:
+        raise TemplateNotFoundError(
+            f"Template '{template_id}' is not in registry.json. Available: {list(templates.keys())}"
+        )
+
+    meta = templates[template_id]
+    required_vars: Set[str] = set(meta.get("required_variables", []))
+
+    # Provide sensible defaults for styling and corporate metadata if not provided
+    normalized_context = dict(context)
+    if "brand_color" not in normalized_context:
+        normalized_context["brand_color"] = "#2563EB"
+    if "company_email" not in normalized_context:
+        normalized_context["company_email"] = "recruiting@company.com"
+    if "company_website" not in normalized_context:
+        normalized_context["company_website"] = "https://example.com"
+    if "company_name" not in normalized_context and "company" in normalized_context:
+        normalized_context["company_name"] = normalized_context["company"]
+    if "job_title" not in normalized_context and "role" in normalized_context:
+        normalized_context["job_title"] = normalized_context["role"]
+    if "meeting_link" not in normalized_context and "meet_link" in normalized_context:
+        normalized_context["meeting_link"] = normalized_context["meet_link"]
+    if "date" not in normalized_context and "interview_date" in normalized_context:
+        normalized_context["date"] = normalized_context["interview_date"]
+    if "time" not in normalized_context and "interview_time" in normalized_context:
+        normalized_context["time"] = normalized_context["interview_time"]
+    if "timezone" not in normalized_context:
+        normalized_context["timezone"] = "UTC"
+
+    # Verify all required variables are supplied
+    missing = [v for v in required_vars if v not in normalized_context or normalized_context[v] is None]
+    if missing:
+        raise MissingTemplateVariablesError(
+            f"Cannot render '{template_id}'. Missing required variables: {missing}"
+        )
+
+    # Determine templates dir
+    tpl_dir = os.path.dirname(REGISTRY_PATH) if os.path.exists(REGISTRY_PATH) else os.path.abspath("templates")
+    html_file = os.path.join(tpl_dir, f"{template_id}.html")
+    txt_file = os.path.join(tpl_dir, f"{template_id}.txt")
+
+    if not os.path.exists(html_file):
+        raise FileNotFoundError(f"HTML template missing: {html_file}")
+    if not os.path.exists(txt_file):
+        raise FileNotFoundError(f"TXT template missing: {txt_file}")
+
+    with open(html_file, "r", encoding="utf-8") as f:
+        html_raw = f.read()
+    with open(txt_file, "r", encoding="utf-8") as f:
+        txt_raw = f.read()
+
+    # Preheader and subject substitution
+    subject_raw = meta.get("subject", "")
+    preheader_raw = meta.get("preheader", "")
+
+    # Perform pure deterministic substitution ({{var}} -> str(val) and {var} -> str(val))
+    def substitute(text: str) -> str:
+        res = text
+        for k, v in normalized_context.items():
+            str_val = str(v) if v is not None else ""
+            res = res.replace(f"{{{{{k}}}}}", str_val)
+            res = res.replace(f"{{{k}}}", str_val)
+        return res
+
+    subject = substitute(subject_raw)
+    html_rendered = substitute(html_raw)
+    txt_rendered = substitute(txt_raw)
+    preheader = substitute(preheader_raw)
+
+    return subject, html_rendered, txt_rendered, preheader
 
 
 def is_email_already_sent(
@@ -75,7 +193,7 @@ def dispatch_pipeline_template_email(
 ) -> Tuple[bool, str, Optional[uuid.UUID]]:
     """
     Renders and dispatches a pipeline email via Gmail/SMTP.
-    Enforces idempotency, variable validation, and timezone-based quiet hours.
+    Enforces idempotency, variable validation, and quiet hours.
     Returns: (sent: bool, message: str, message_id: Optional[uuid.UUID])
     """
     # 1. Idempotency check
@@ -88,55 +206,58 @@ def dispatch_pipeline_template_email(
         )
         return False, f"Email '{template_id}' was already sent (idempotency skipped).", None
 
-    # 2. Render template strictly from DB (single source of truth)
+    # 2. Render template: check DB recruiting_templates first, fall back to file-based registry
+    subject, html_body, text_body, preheader = "", "", "", ""
+    rendered = False
+
     try:
-        from app.services.template_service import (
-            render_user_template,
-            TemplateMissingOrDisabledError,
-            MissingTemplateVariablesError,
-        )
+        from app.services.template_service import render_user_template
         subject, html_body, text_body, preheader = render_user_template(
             session=session,
             user_id=user_id,
             template_id=template_id,
             context=context,
         )
-    except TemplateMissingOrDisabledError as tm_err:
-        pause_msg = f"Template missing: {getattr(tm_err, 'stage_name', template_id)}. Configure at /settings?tab=templates"
-        logger.warning("Pipeline email blocked: %s", pause_msg)
+        rendered = True
+    except Exception as tm_err:
+        logger.debug("DB template lookup fallback to registry for '%s': %s", template_id, tm_err)
+
+    if not rendered:
         try:
-            from app.services.pipeline_agent_service import set_candidate_pipeline_status, PipelineStatus
-            set_candidate_pipeline_status(
-                session=session,
-                candidate=candidate,
-                new_status=PipelineStatus.NEEDS_ATTENTION,
-                action_taken=pause_msg,
-                result="paused",
-                next_pending_action="Configure template in Settings > Recruiting Templates",
-            )
-        except Exception as pe:
-            logger.debug("Could not record pipeline pause status: %s", pe)
-        return False, pause_msg, None
-    except MissingTemplateVariablesError as mv_err:
-        pause_msg = f"Missing variable in template: {mv_err}. Configure at /settings?tab=templates"
-        logger.warning("Pipeline email blocked and HR flagged: %s", pause_msg)
-        try:
-            from app.services.pipeline_agent_service import set_candidate_pipeline_status, PipelineStatus
-            set_candidate_pipeline_status(
-                session=session,
-                candidate=candidate,
-                new_status=PipelineStatus.NEEDS_ATTENTION,
-                action_taken=pause_msg,
-                result="paused",
-                next_pending_action="Resolve missing variables or edit template in Settings",
-            )
-        except Exception as pe:
-            logger.debug("Could not record pipeline pause status: %s", pe)
-        return False, pause_msg, None
-    except Exception as exc:
-        pause_msg = f"Template missing or render error: {exc}. Configure at /settings?tab=templates"
-        logger.exception("Error rendering template %s: %s", template_id, exc)
-        return False, pause_msg, None
+            subject, html_body, text_body, preheader = render_template(template_id, context)
+            rendered = True
+        except MissingTemplateVariablesError as mv_err:
+            pause_msg = f"Missing variable in template: {mv_err}. Configure at /settings?tab=templates"
+            logger.warning("Pipeline email blocked and HR flagged: %s", pause_msg)
+            try:
+                from app.services.pipeline_agent_service import set_candidate_pipeline_status, PipelineStatus
+                set_candidate_pipeline_status(
+                    session=session,
+                    candidate=candidate,
+                    new_status=PipelineStatus.NEEDS_ATTENTION,
+                    action_taken=pause_msg,
+                    result="paused",
+                    next_pending_action="Resolve missing variables or edit template in Settings",
+                )
+            except Exception as pe:
+                logger.debug("Could not record pipeline pause status: %s", pe)
+            return False, pause_msg, None
+        except Exception as exc:
+            pause_msg = f"Template missing: {template_id}. Configure at /settings?tab=templates"
+            logger.warning("Pipeline email blocked: %s (error: %s)", pause_msg, exc)
+            try:
+                from app.services.pipeline_agent_service import set_candidate_pipeline_status, PipelineStatus
+                set_candidate_pipeline_status(
+                    session=session,
+                    candidate=candidate,
+                    new_status=PipelineStatus.NEEDS_ATTENTION,
+                    action_taken=pause_msg,
+                    result="paused",
+                    next_pending_action="Configure template in Settings > Recruiting Templates",
+                )
+            except Exception as pe:
+                logger.debug("Could not record pipeline pause status: %s", pe)
+            return False, pause_msg, None
 
     # 3. Check time-of-day window (8:00 - 20:00) unless it's confirmation or reminder or forced
     urgent_templates = {

@@ -1,0 +1,21 @@
+Dear {{candidate_name}},
+
+Your {{round_name}} Interview for the {{job_title}} position at {{company_name}} has been confirmed. Below are your meeting details:
+
+INTERVIEW DETAILS:
+- Interview Stage: {{round_name}} Interview
+- Date: {{date}}
+- Time: {{time}} ({{timezone}})
+- Meeting Link: {{meeting_link}}
+
+IMPORTANT INSTRUCTIONS:
+- Please join the video meeting 5 minutes early to test your audio, camera, and network connection.
+- Ensure you are in a quiet room with minimal background noise.
+- Reschedule Policy: If you need to reschedule, please notify us at least 24 hours in advance by replying directly to this email.
+
+Best regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}
