@@ -271,12 +271,9 @@ class CVReviewService:
                     "signature": f"Warm regards,\n{hr_name}\n{company_name}",
                 }
 
-                # 3. Resolve CV Passed & Job Details templates strictly from DB via render_user_template
-                cv_passed_sub, _, cv_passed_body, _ = render_user_template(
+                # 3. Resolve CV Passed template strictly from DB via render_user_template
+                cv_passed_sub, cv_passed_html, cv_passed_body, _ = render_user_template(
                     session, user_id, "cv_passed", template_vars
-                )
-                job_details_sub, _, job_details_body, _ = render_user_template(
-                    session, user_id, "job_details", template_vars
                 )
 
                 emails_dispatched = []
@@ -300,25 +297,6 @@ class CVReviewService:
                 )
                 session.add(msg_cv)
                 emails_dispatched.append("CV Passed")
-
-                # 5. Dispatch Email 2: Job Details
-                msg_jd = Message(
-                    user_id=user_id,
-                    candidate_id=cand.id,
-                    direction=MessageDirection.outbound,
-                    message_type=MessageType.email,
-                    channel="email",
-                    body=job_details_body,
-                    status=MessageStatus.sent,
-                    hr_approved=True,
-                    template_name="job_details",
-                    template_variables={
-                        "subject": job_details_sub,
-                        "scheduling_url": scheduling_url,
-                    },
-                    sent_at=now_utc,
-                )
-                session.add(msg_jd)
                 emails_dispatched.append("Job Details")
 
                 # Try dispatching via live Google Service if account is active
@@ -334,6 +312,7 @@ class CVReviewService:
                                 candidate_id=cand.id,
                                 subject=cv_passed_sub,
                                 body=cv_passed_body,
+                                html_body=cv_passed_html,
                                 template_name="cv_passed",
                             ),
                         )

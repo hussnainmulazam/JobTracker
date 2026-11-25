@@ -510,6 +510,27 @@ def get_template_for_stage(
     raise TemplateMissingOrDisabledError(stage_name=f"{tmpl.name} (disabled)")
 
 
+def normalize_candidate_name(raw_name: Optional[str]) -> Tuple[str, str]:
+    """
+    Normalizes candidate names:
+    - Eliminates ALL-CAPS or all-lowercase
+    - Returns (full_name_title_cased, first_name_only)
+    - Fallback: ('Candidate', 'there')
+    """
+    if not raw_name or not raw_name.strip():
+        return ("Candidate", "there")
+    cleaned = " ".join(raw_name.strip().split())
+    words = []
+    for w in cleaned.split(" "):
+        if w.isupper() or w.islower():
+            words.append(w.capitalize())
+        else:
+            words.append(w)
+    full_name = " ".join(words)
+    first_name = words[0] if words else "there"
+    return full_name, first_name
+
+
 def fill_template_variables(template_str: str, variables: Dict[str, Any]) -> str:
     """
     Pure deterministic variable substitution. Never calls AI.
@@ -615,22 +636,63 @@ def render_user_template(
             f"Cannot send '{tmpl.name}'. Required variable(s) {missing} used in template are missing or empty. Blocked and flagged for HR."
         )
 
+    # Candidate name normalization (Title case)
+    full_cand, first_cand = normalize_candidate_name(normalized_ctx.get("candidate_name"))
+    normalized_ctx["candidate_name"] = full_cand
+    normalized_ctx["first_name"] = first_cand
+    normalized_ctx["candidate_full_name"] = full_cand
+
+    # Deduplicate sign-off if recruiter name is identical to company name
+    comp_val = (normalized_ctx.get("company") or "Our Team").strip()
+    hr_val = (normalized_ctx.get("hr_name") or comp_val).strip()
+    if hr_val.lower() == comp_val.lower():
+        normalized_ctx["hr_name"] = comp_val
+        normalized_ctx["signature"] = f"Warm regards,\n{comp_val}\nTalent Acquisition Team"
+    else:
+        normalized_ctx["signature"] = f"Warm regards,\n{hr_val}\n{comp_val}"
+
     # Pure deterministic variable substitution. Never calls LLM.
     subject = fill_template_variables(raw_subject, normalized_ctx)
     text_body = fill_template_variables(raw_body, normalized_ctx)
     preheader = subject
 
+    # Convert line breaks within paragraphs to <br/> so breaks are preserved
     html_paragraphs = "".join(
-        f"<p style='margin: 0 0 16px 0; line-height: 1.6;'>{p.strip()}</p>"
+        f"<p style='margin: 0 0 16px 0; line-height: 1.6;'>{p.strip().replace(chr(10), '<br/>')}</p>"
         for p in text_body.split("\n\n")
         if p.strip()
     )
+
+    # If scheduling link is present, append a high-converting CTA button
+    cta_block = ""
+    sched_url = normalized_ctx.get("schedule_link") or normalized_ctx.get("booking_link")
+    if sched_url and "http" in str(sched_url):
+        cta_block = f"""
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="{sched_url}" style="display: inline-block; background-color: #2563EB; color: #ffffff; font-weight: 600; font-size: 14px; padding: 12px 24px; text-decoration: none; border-radius: 6px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
+            Schedule Your Interview &rarr;
+          </a>
+        </div>
+        <p style="font-size: 12px; color: #64748b; margin-top: 8px; text-align: center;">
+          Or copy and paste this link: <a href="{sched_url}" style="color: #2563eb; word-break: break-all;">{sched_url}</a>
+        </p>
+        """
+
+    footer_block = f"""
+    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0 16px 0;" />
+    <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+      &copy; {comp_val} &bull; Talent Acquisition Team
+    </p>
+    """
+
     html_body = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>{subject}</title></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b; background-color: #f8fafc; padding: 24px;">
   <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 32px;">
     {html_paragraphs}
+    {cta_block}
+    {footer_block}
   </div>
 </body>
 </html>"""

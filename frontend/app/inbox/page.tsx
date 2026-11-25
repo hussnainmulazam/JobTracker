@@ -49,54 +49,13 @@ import {
 import { CandidateDrawer } from "@/components/candidates/candidate-drawer";
 import { ScheduleInviteModal } from "@/components/scheduling/schedule-invite-modal";
 import { useAgentEvents } from "@/lib/use-agent-events";
+import {
+  ALL_RECRUITING_TEMPLATES,
+  fillTemplate,
+  normalizeCandidateName,
+} from "@/lib/template-registry";
 
 type FilterTab = "all" | "unread" | "awaiting_reply";
-
-interface TemplateOption {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-}
-
-const EMAIL_TEMPLATES: TemplateOption[] = [
-  {
-    id: "initial_interview",
-    name: "Initial Interview Invitation",
-    subject: "Interview Invitation: {{job_title}}",
-    body: "Hi {{candidate_name}},\n\nThank you for applying for the {{job_title}} position. We reviewed your qualifications and were impressed by your background. We would love to invite you for an initial interview to discuss the role and get to know you better.\n\nPlease let us know what days and times work best for your schedule, or book a time that suits you.\n\nBest regards,\nRecruiting Team",
-  },
-  {
-    id: "technical_interview",
-    name: "Technical Discussion",
-    subject: "Technical Interview Next Steps: {{job_title}}",
-    body: "Hi {{candidate_name}},\n\nCongratulations on progressing through the preliminary screening for the {{job_title}} role! We would like to schedule your technical discussion with our engineering team.\n\nPlease share your availability for a 45-minute technical conversation this week.\n\nBest regards,\nEngineering & Talent Team",
-  },
-  {
-    id: "final_interview",
-    name: "Final Round Interview",
-    subject: "Final Round Discussion: {{job_title}}",
-    body: "Hi {{candidate_name}},\n\nGreat news! The team really enjoyed speaking with you. We would like to schedule your final round discussion with our leadership team.\n\nPlease let us know when you might be free for a 30-minute conversation.\n\nBest regards,\nTalent Team",
-  },
-  {
-    id: "offer",
-    name: "Offer of Employment",
-    subject: "Offer of Employment: {{job_title}}",
-    body: "Hi {{candidate_name}},\n\nWe are thrilled to offer you the position of {{job_title}}! We were deeply impressed by your skills and think you will be a fantastic addition to our team.\n\nAttached is our formal offer summary and next steps. Please review and feel free to reach out with any questions.\n\nWarm regards,\nLeadership & Talent Team",
-  },
-  {
-    id: "follow_up",
-    name: "Follow-up Check-in",
-    subject: "Following up regarding {{job_title}}",
-    body: "Hi {{candidate_name}},\n\nJust following up on our previous note regarding the {{job_title}} role. Please let us know if you have any questions or if you are still available to connect.\n\nBest regards,\nRecruiting Team",
-  },
-  {
-    id: "rejection",
-    name: "Application Update",
-    subject: "Update regarding your application for {{job_title}}",
-    body: "Dear {{candidate_name}},\n\nThank you for your interest in the {{job_title}} position and for taking the time to share your background with us. While your profile has strong elements, we have decided to move forward with other applicants whose experience more closely aligns with our immediate requirements.\n\nWe wish you all the best in your career search.\n\nSincerely,\nRecruiting Team",
-  },
-];
 
 function InboxContent() {
   const router = useRouter();
@@ -254,17 +213,17 @@ function InboxContent() {
     setSelectedTemplateId(templateId);
     if (!templateId || !threadData) return;
 
-    const tpl = EMAIL_TEMPLATES.find((t) => t.id === templateId);
+    const tpl = ALL_RECRUITING_TEMPLATES.find((t) => t.id === templateId);
     if (tpl) {
-      const candName = threadData.candidate_name || "Applicant";
-      const jobTitle = threadData.opening_title || "Open Position";
+      const ctx = {
+        candidate_name: threadData.candidate_name,
+        job_title: threadData.opening_title || "Open Position",
+        company_name: "AivonTech",
+        hr_name: "AivonTech",
+      };
 
-      setReplySubject(
-        tpl.subject.replace(/\{\{candidate_name\}\}/g, candName).replace(/\{\{job_title\}\}/g, jobTitle)
-      );
-      setReplyText(
-        tpl.body.replace(/\{\{candidate_name\}\}/g, candName).replace(/\{\{job_title\}\}/g, jobTitle)
-      );
+      setReplySubject(fillTemplate(tpl.subject, ctx));
+      setReplyText(fillTemplate(tpl.body, ctx));
     }
   };
 
@@ -745,14 +704,30 @@ function InboxContent() {
                     <select
                       value={selectedTemplateId}
                       onChange={(e) => handleSelectTemplate(e.target.value)}
-                      className="text-xs h-7 px-2 rounded-lg border border-border/80 bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                      className="text-xs h-7 px-2 rounded-lg border border-border/80 bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer max-w-[220px]"
                     >
-                      <option value="">Insert Template...</option>
-                      {EMAIL_TEMPLATES.map((tpl) => (
-                        <option key={tpl.id} value={tpl.id}>
-                          {tpl.name}
-                        </option>
-                      ))}
+                      <option value="">Insert Template (31 Available)...</option>
+                      <optgroup label="Core Pipeline (9)">
+                        {ALL_RECRUITING_TEMPLATES.filter((t) => t.category === "core").map((tpl) => (
+                          <option key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Supporting Outreach (16)">
+                        {ALL_RECRUITING_TEMPLATES.filter((t) => t.category === "supporting").map((tpl) => (
+                          <option key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Internal Notifications (6)">
+                        {ALL_RECRUITING_TEMPLATES.filter((t) => t.category === "internal").map((tpl) => (
+                          <option key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </option>
+                        ))}
+                      </optgroup>
                     </select>
 
                     {/* AI Suggest Reply Button */}

@@ -64,6 +64,7 @@ import {
   recruitingTemplatesApi,
   RecruitingTemplateModel,
 } from "@/lib/api";
+import { ALL_RECRUITING_TEMPLATES } from "@/lib/template-registry";
 import {
   LIFECYCLE_TEMPLATES,
   DEFAULT_LIFECYCLE_TEMPLATES,
@@ -258,8 +259,9 @@ function SettingsPageInner() {
 
   const [activeSettingsTemplate, setActiveSettingsTemplate] = useState("cv_received");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [settingsCategoryFilter, setSettingsCategoryFilter] = useState<"all" | "core" | "supporting" | "internal">("all");
   const [settingsTemplates, setSettingsTemplates] = useState<
-    Record<string, { id?: string; subject: string; body: string; name?: string; is_active?: boolean; is_default?: boolean; is_custom?: boolean; stage_key?: string }>
+    Record<string, { id?: string; subject: string; body: string; name?: string; is_active?: boolean; is_default?: boolean; is_custom?: boolean; stage_key?: string; category?: string }>
   >(DEFAULT_LIFECYCLE_TEMPLATES as any);
   const [settingsPreviewMode, setSettingsPreviewMode] = useState(false);
   const [isGeneratingAllSettingsAI, setIsGeneratingAllSettingsAI] = useState(false);
@@ -272,9 +274,27 @@ function SettingsPageInner() {
   const [newCustomBody, setNewCustomBody] = useState("");
 
   useEffect(() => {
+    const dict: Record<string, any> = {};
+
+    // 1. Preload all 31 production templates from registry
+    ALL_RECRUITING_TEMPLATES.forEach((tpl) => {
+      dict[tpl.id] = {
+        id: tpl.id,
+        name: tpl.name,
+        subject: tpl.subject,
+        body: tpl.body,
+        is_active: true,
+        is_default: true,
+        is_custom: false,
+        stage_key: tpl.id,
+        category: tpl.category,
+      };
+    });
+
+    // 2. Overlay user database edits if present
     if (dbTemplatesList && dbTemplatesList.length > 0) {
-      const dict: Record<string, any> = {};
       dbTemplatesList.forEach((t) => {
+        const cat = ALL_RECRUITING_TEMPLATES.find((at) => at.id === t.stage_key)?.category || "core";
         dict[t.id] = {
           id: t.id,
           name: t.name,
@@ -284,28 +304,22 @@ function SettingsPageInner() {
           is_default: t.is_default,
           is_custom: t.is_custom,
           stage_key: t.stage_key,
+          category: cat,
         };
         // Also map by stage_key for backwards lookup
         if (t.is_default || !dict[t.stage_key]) {
           dict[t.stage_key] = dict[t.id];
         }
       });
-      setSettingsTemplates(dict);
-
-      if (!selectedTemplateId || !dbTemplatesList.some((t) => t.id === selectedTemplateId)) {
-        const match = dbTemplatesList.find((t) => t.stage_key === activeSettingsTemplate) || dbTemplatesList[0];
-        if (match) {
-          setSelectedTemplateId(match.id);
-          setActiveSettingsTemplate(match.stage_key);
-        }
-      }
-    } else if (onboardingData?.step_4?.templates && Object.keys(onboardingData.step_4.templates).length > 0) {
-      setSettingsTemplates({
-        ...DEFAULT_LIFECYCLE_TEMPLATES,
-        ...onboardingData.step_4.templates,
-      });
     }
-  }, [dbTemplatesList, onboardingData]);
+
+    setSettingsTemplates(dict);
+
+    if (!selectedTemplateId) {
+      setSelectedTemplateId("cv_received");
+      setActiveSettingsTemplate("cv_received");
+    }
+  }, [dbTemplatesList]);
 
   const saveSettingsTemplatesMutation = useMutation({
     mutationFn: async () => {
@@ -1307,17 +1321,41 @@ function SettingsPageInner() {
             </div>
 
             {/* All Templates Pill Navigation (from DB + Custom) */}
-            <div className="relative space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Select Template ({dbTemplatesList?.length || 11} in Database):
-                </span>
+            <div className="relative space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mr-1">
+                    Templates (31):
+                  </span>
+                  {(
+                    [
+                      { id: "all", label: "All (31)" },
+                      { id: "core", label: "Core (9)" },
+                      { id: "supporting", label: "Supporting (16)" },
+                      { id: "internal", label: "Internal (6)" },
+                    ] as const
+                  ).map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSettingsCategoryFilter(cat.id)}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition ${
+                        settingsCategoryFilter === cat.id
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setIsAddingCustom(!isAddingCustom)}
-                  className="h-7 text-xs px-2.5 gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                  className="h-7 text-xs px-2.5 gap-1 border-primary/30 text-primary hover:bg-primary/10 self-start sm:self-auto"
                 >
                   <Plus className="w-3 h-3" />
                   <span>{isAddingCustom ? "Cancel" : "Add Custom Template"}</span>
@@ -1402,23 +1440,22 @@ function SettingsPageInner() {
               )}
 
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                {(dbTemplatesList && dbTemplatesList.length > 0 ? dbTemplatesList : LIFECYCLE_TEMPLATES).map((item: any) => {
-                  const itemKey = item.id || item.key;
-                  const itemStageKey = item.stage_key || item.key;
-                  const itemName = item.name || item.shortName || itemStageKey;
-                  const isActive = selectedTemplateId === item.id || activeSettingsTemplate === itemStageKey;
-                  const isDbActive = item.is_active !== false;
-                  const isDbDefault = Boolean(item.is_default);
-                  const isDbCustom = Boolean(item.is_custom);
+                {ALL_RECRUITING_TEMPLATES.filter(
+                  (tpl) => settingsCategoryFilter === "all" || tpl.category === settingsCategoryFilter
+                ).map((tpl) => {
+                  const itemKey = tpl.id;
+                  const itemStageKey = tpl.id;
+                  const itemName = tpl.name;
+                  const isActive = selectedTemplateId === itemKey || activeSettingsTemplate === itemStageKey;
+                  const dbMatch = dbTemplatesList?.find((d) => d.stage_key === tpl.id || d.id === tpl.id);
+                  const isDbActive = dbMatch ? dbMatch.is_active !== false : true;
 
                   return (
                     <button
                       key={itemKey}
                       type="button"
                       onClick={() => {
-                        if (item.id) {
-                          setSelectedTemplateId(item.id);
-                        }
+                        setSelectedTemplateId(itemKey);
                         setActiveSettingsTemplate(itemStageKey);
                         setSettingsPreviewMode(false);
                       }}
@@ -1438,12 +1475,7 @@ function SettingsPageInner() {
                         }`}
                       />
                       <span>{itemName}</span>
-                      {isDbDefault && <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400 ml-0.5" />}
-                      {isDbCustom && (
-                        <span className="text-[9px] px-1 rounded bg-muted/60 border border-border/60 font-mono">
-                          custom
-                        </span>
-                      )}
+                      {dbMatch?.is_default && <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400 ml-0.5" />}
                     </button>
                   );
                 })}

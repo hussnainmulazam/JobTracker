@@ -1458,6 +1458,46 @@ class GoogleService:
         if not candidate.email or "@" not in candidate.email or candidate.email.endswith("@no-email.com"):
             raise ValueError(f"Candidate '{candidate.name}' does not have a valid recipient email address.")
 
+        # 1. Normalize candidate name in DB if in ALL-CAPS
+        try:
+            from app.services.template_service import normalize_candidate_name
+            full_cand, _ = normalize_candidate_name(candidate.name)
+            if candidate.name and candidate.name.isupper() and full_cand:
+                candidate.name = full_cand
+                self.session.add(candidate)
+                self.session.commit()
+        except Exception as norm_err:
+            logger.debug("Candidate name normalization note: %s", norm_err)
+
+        # 2. Idempotency Guard (Requirement 5): Never send the same template twice per candidate per stage
+        tmpl_key = (request.template_name or "").strip()
+        force_send = getattr(request, "force_resend", False)
+        if tmpl_key and not force_send and tmpl_key != "custom":
+            existing_sent = self.session.exec(
+                select(Message).where(
+                    Message.candidate_id == candidate.id,
+                    Message.user_id == user_id,
+                    Message.template_name == tmpl_key,
+                    Message.status == MessageStatus.sent,
+                )
+            ).first()
+            if existing_sent:
+                logger.info(
+                    "Idempotency guard: template '%s' already sent to candidate %s. Skipping duplicate.",
+                    tmpl_key,
+                    candidate.email,
+                )
+                return GoogleSendEmailResponse(
+                    message_id=existing_sent.id,
+                    candidate_id=candidate.id,
+                    recipient_email=candidate.email,
+                    subject=request.subject,
+                    status="skipped_idempotent",
+                    google_message_id=existing_sent.whatsapp_message_id,
+                    sent_at=existing_sent.sent_at or datetime.now(timezone.utc),
+                    error_message="Duplicate send skipped by idempotency guard.",
+                )
+
         # Look for existing thread ID to reply within the same Gmail thread
         target_thread_id = getattr(request, "thread_id", None)
         if not target_thread_id:
@@ -1469,7 +1509,23 @@ class GoogleService:
             if prev_msg and prev_msg.template_variables:
                 target_thread_id = prev_msg.template_variables.get("thread_id") or prev_msg.template_variables.get("google_message_id")
 
-        # Construct RFC 2822 EmailMessage
+        # 3. Determine clean plain-text and rich HTML alternatives (Requirement 1)
+        raw_body = request.body or ""
+        html_body = getattr(request, "html_body", None)
+
+        if not html_body and ("<!DOCTYPE" in raw_body or "<html" in raw_body):
+            html_body = raw_body
+            # Extract clean human-readable plain text without raw HTML tags
+            clean_txt = re.sub(r"<style.*?</style>", "", raw_body, flags=re.DOTALL)
+            clean_txt = re.sub(r"<script.*?</script>", "", clean_txt, flags=re.DOTALL)
+            clean_txt = re.sub(r"<[^>]+>", " ", clean_txt)
+            clean_txt = re.sub(r"[ \t]+", " ", clean_txt)
+            clean_txt = re.sub(r"\n\s*\n+", "\n\n", clean_txt).strip()
+            plain_text = clean_txt
+        else:
+            plain_text = raw_body
+
+        # Construct RFC 2822 EmailMessage with multipart/alternative
         msg = EmailMessage()
         msg["To"] = candidate.email
         msg["From"] = account.email
@@ -1477,19 +1533,25 @@ class GoogleService:
         if target_thread_id:
             msg["In-Reply-To"] = f"<{target_thread_id}>"
             msg["References"] = f"<{target_thread_id}>"
-        msg.set_content(request.body)
+
+        if html_body:
+            msg.set_content(plain_text)
+            msg.add_alternative(html_body, subtype="html")
+        else:
+            msg.set_content(plain_text)
+
         raw_base64 = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
 
         # Obtain fresh access token
         access_token = self.get_valid_access_token(account)
 
-        # Create pending message record
+        # Create pending message record (storing human readable plain_text in DB)
         message_row = Message(
             candidate_id=candidate.id,
             user_id=user_id,
             direction=MessageDirection.outbound,
             message_type=MessageType.email,
-            body=request.body,
+            body=plain_text,
             status=MessageStatus.pending,
             template_name=request.template_name or "custom",
             template_variables={"subject": request.subject, "thread_id": target_thread_id},

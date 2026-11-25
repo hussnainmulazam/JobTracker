@@ -98,7 +98,7 @@ export default function InterviewsPage() {
   useAgentEvents();
 
   // 1. Filter and View States
-  const [activeTab, setActiveTab] = useState<ViewTab>("upcoming");
+  const [activeTab, setActiveTab] = useState<ViewTab>("calendar");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(new Date());
   const [selectedOpeningId, setSelectedOpeningId] = useState<string>("all");

@@ -5,7 +5,9 @@ REST endpoints for managing database-backed recruiting email templates.
 Single source of truth for candidate communication templates.
 """
 
+import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -29,6 +31,18 @@ router = APIRouter(
     prefix="/recruiting-templates",
     tags=["Recruiting Templates"],
 )
+
+
+class TemplateCatalogItem(BaseModel):
+    id: str
+    name: str
+    category: str
+    subject: str
+    preheader: Optional[str] = None
+    body: str
+    html_content: Optional[str] = None
+    required_variables: List[str] = []
+    trigger_event: Optional[str] = None
 
 
 class TemplateResponse(BaseModel):
@@ -85,6 +99,124 @@ def list_templates(
     """
     templates = get_user_templates_from_db(session, current_user.id)
     return templates
+
+
+@router.get("/catalog", response_model=List[TemplateCatalogItem])
+def get_template_catalog(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns all 31 production email templates from templates/registry.json
+    categorized by core, supporting, and internal.
+    """
+    from app.services.pipeline_template_service import get_registry, REGISTRY_PATH
+    registry = get_registry()
+    templates_map = registry.get("templates", {})
+    categories = registry.get("categories", {})
+
+    cat_lookup = {}
+    for cat, t_ids in categories.items():
+        for tid in t_ids:
+            cat_lookup[tid] = cat
+
+    tpl_dir = os.path.dirname(REGISTRY_PATH) if os.path.exists(REGISTRY_PATH) else os.path.abspath("templates")
+    results = []
+    for tid, meta in templates_map.items():
+        cat = cat_lookup.get(tid, "core")
+        txt_file = os.path.join(tpl_dir, f"{tid}.txt")
+        html_file = os.path.join(tpl_dir, f"{tid}.html")
+
+        body = ""
+        if os.path.exists(txt_file):
+            with open(txt_file, "r", encoding="utf-8") as f:
+                body = f.read().strip()
+
+        html_content = ""
+        if os.path.exists(html_file):
+            with open(html_file, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+        results.append(
+            TemplateCatalogItem(
+                id=tid,
+                name=meta.get("id", tid).replace("_", " ").title(),
+                category=cat,
+                subject=meta.get("subject", ""),
+                preheader=meta.get("preheader"),
+                body=body,
+                html_content=html_content,
+                required_variables=meta.get("required_variables", []),
+                trigger_event=meta.get("trigger_event"),
+            )
+        )
+    return results
+
+
+@router.get("/detail/{name_or_id}")
+def get_template_by_name_or_id(
+    name_or_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """
+    Fetches a template by UUID or by template name (e.g. cv_received).
+    """
+    # 1. Try UUID in database
+    try:
+        tmpl_uuid = uuid.UUID(name_or_id)
+        db_tmpl = session.exec(
+            select(RecruitingTemplate).where(
+                RecruitingTemplate.id == tmpl_uuid,
+                RecruitingTemplate.user_id == current_user.id,
+            )
+        ).first()
+        if db_tmpl:
+            return db_tmpl
+    except ValueError:
+        pass
+
+    # 2. Try stage_key in database
+    db_tmpl = session.exec(
+        select(RecruitingTemplate).where(
+            RecruitingTemplate.stage_key == name_or_id,
+            RecruitingTemplate.user_id == current_user.id,
+            RecruitingTemplate.is_default == True,
+        )
+    ).first()
+    if db_tmpl:
+        return db_tmpl
+
+    # 3. Fallback to templates/registry.json
+    from app.services.pipeline_template_service import get_registry, REGISTRY_PATH
+    registry = get_registry()
+    templates_map = registry.get("templates", {})
+    if name_or_id in templates_map:
+        meta = templates_map[name_or_id]
+        tpl_dir = os.path.dirname(REGISTRY_PATH) if os.path.exists(REGISTRY_PATH) else os.path.abspath("templates")
+        txt_file = os.path.join(tpl_dir, f"{name_or_id}.txt")
+        html_file = os.path.join(tpl_dir, f"{name_or_id}.html")
+        body = ""
+        if os.path.exists(txt_file):
+            with open(txt_file, "r", encoding="utf-8") as f:
+                body = f.read().strip()
+        html_content = ""
+        if os.path.exists(html_file):
+            with open(html_file, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+        return {
+            "id": name_or_id,
+            "stage_key": name_or_id,
+            "name": name_or_id.replace("_", " ").title(),
+            "subject": meta.get("subject", ""),
+            "body": body,
+            "html_content": html_content,
+            "is_active": True,
+            "is_default": True,
+            "is_custom": False,
+        }
+
+    raise HTTPException(status_code=404, detail=f"Template '{name_or_id}' not found")
 
 
 @router.post("", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)

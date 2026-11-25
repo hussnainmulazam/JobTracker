@@ -880,7 +880,8 @@ class CandidateService:
                     candidate_id=candidate.id,
                     subject=subject,
                     body=body,
-                    template_name="application_approved_interview_invitation",
+                    html_body=html_body,
+                    template_name="cv_passed",
                 ),
             )
             logger.info("Auto-sent approval and interview invitation email to %s (%s)", candidate.name, candidate.email)

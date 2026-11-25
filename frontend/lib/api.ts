@@ -1902,6 +1902,22 @@ export interface RecruitingTemplateModel {
 
 export const recruitingTemplatesApi = {
   list: () => api.get<RecruitingTemplateModel[]>("/api/v1/recruiting-templates"),
+  getCatalog: () =>
+    api.get<
+      Array<{
+        id: string;
+        name: string;
+        category: string;
+        subject: string;
+        preheader?: string;
+        body: string;
+        html_content?: string;
+        required_variables: string[];
+        trigger_event?: string;
+      }>
+    >("/api/v1/recruiting-templates/catalog"),
+  getDetail: (nameOrId: string) =>
+    api.get<RecruitingTemplateModel>(`/api/v1/recruiting-templates/detail/${nameOrId}`),
   create: (data: {
     stage_key: string;
     name: string;
