@@ -133,6 +133,13 @@ class Settings(BaseSettings):
     GOOGLE_JAVASCRIPT_ORIGINS: Optional[str] = None
     GOOGLE_ENCRYPTION_KEY: Optional[str] = None
     FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_BASE_URL: Optional[str] = None
+
+    @property
+    def frontend_base_url(self) -> str:
+        """Returns the public frontend base URL, preferring FRONTEND_BASE_URL over FRONTEND_URL."""
+        url = self.FRONTEND_BASE_URL or self.FRONTEND_URL or "http://localhost:3000"
+        return url.rstrip("/")
 
     # Supabase Storage Integration
     SUPABASE_URL: Optional[str] = None

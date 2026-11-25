@@ -1,0 +1,14 @@
+Hello,
+
+You have an upcoming {{round_name}} Interview with candidate {{candidate_name}} for the {{job_title}} position today at {{time}} ({{timezone}}) at {{company_name}}.
+
+MEETING LINK: {{meeting_link}}
+
+Please log into the meeting room 2-3 minutes early to welcome the candidate. Following the conversation, please submit your feedback and evaluation score within 24 hours.
+
+Best regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

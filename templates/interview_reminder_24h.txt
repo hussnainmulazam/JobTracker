@@ -1,0 +1,18 @@
+Dear {{candidate_name}},
+
+This is a friendly reminder that your {{round_name}} Interview for the {{job_title}} position at {{company_name}} takes place tomorrow.
+
+MEETING SCHEDULE:
+- Stage: {{round_name}} Interview
+- Date: {{date}}
+- Time: {{time}} ({{timezone}})
+- Meeting Link: {{meeting_link}}
+
+Please plan to enter the meeting room 5 minutes before the start time. We look forward to speaking with you!
+
+Best regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

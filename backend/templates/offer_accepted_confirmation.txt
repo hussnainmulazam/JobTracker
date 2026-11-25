@@ -1,0 +1,17 @@
+Dear {{candidate_name}},
+
+It is official! We have received your signed offer letter for the {{job_title}} position at {{company_name}}. Everyone on our team is ecstatic to have you join us.
+
+WHAT HAPPENS NEXT?
+- Our People Operations team will set up your corporate email and systems access.
+- You will receive your pre-boarding welcome package and IT hardware shipping details.
+- A full Day 1 schedule will be shared prior to your start date.
+
+If you have any questions between now and your start date, please feel free to reach out. Welcome to {{company_name}}!
+
+Warm regards,
+{{hr_name}}
+People Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

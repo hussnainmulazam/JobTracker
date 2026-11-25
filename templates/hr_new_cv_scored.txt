@@ -1,0 +1,15 @@
+Hello {{hr_name}},
+
+A new candidate application has been ingested and parsed for {{job_title}} at {{company_name}}. The candidate profile and deterministic scorecard are ready for your review.
+
+CANDIDATE OVERVIEW:
+- Candidate Name: {{candidate_name}}
+- Candidate Email: {{candidate_email}}
+- Target Position: {{job_title}}
+
+Please log in to your recruiting dashboard to inspect the parsed resume, review matched skills and red flags, and make an Approve or Reject decision.
+
+Automated Notification System
+{{company_name}} Talent Pipeline
+Email: {{company_email}}
+Website: {{company_website}}

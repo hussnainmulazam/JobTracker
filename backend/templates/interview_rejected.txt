@@ -1,0 +1,19 @@
+Dear {{candidate_name}},
+
+Thank you very much for meeting with our team during the {{round_name}} Interview for the {{job_title}} role at {{company_name}}. We sincerely appreciate the time, preparation, and energy you invested in speaking with us.
+
+While our interviewing panel was impressed by many aspects of your background, we have made the difficult decision not to advance your candidacy to the next stage. We evaluated several exceptional candidates and chose to proceed with those whose specific experience more closely aligns with our immediate technical priorities.
+
+--------------------------------------------------
+EVALUATION FEEDBACK:
+"{{feedback}}"
+--------------------------------------------------
+
+We would like to retain your resume in our talent network for future openings that match your skills. We wish you continued success in your professional endeavors and thank you again for considering {{company_name}}.
+
+Warm regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

@@ -1,0 +1,14 @@
+Dear {{candidate_name}},
+
+We are writing to inform you that because we have not received a response regarding interview scheduling for the {{job_title}} position at {{company_name}}, we have closed your application file for this opening.
+
+We understand that timing and circumstances change. If you wish to be considered for future opportunities or if your schedule frees up down the road, please feel free to submit a new application through our careers portal.
+
+We thank you for your initial interest in {{company_name}} and wish you the best in your career pursuits.
+
+Sincerely,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

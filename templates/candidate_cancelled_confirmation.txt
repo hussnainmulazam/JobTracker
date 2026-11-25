@@ -1,0 +1,14 @@
+Dear {{candidate_name}},
+
+We have received your message and confirmed the cancellation of your {{round_name}} Interview for the {{job_title}} position at {{company_name}}.
+
+If you would like to reschedule your interview for a different date and time, please reply directly to this email with your updated availability windows.
+
+Alternatively, if you wish to withdraw your application from consideration, simply let us know and we will archive your profile with gratitude for your time.
+
+Best regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

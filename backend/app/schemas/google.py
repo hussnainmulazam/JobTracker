@@ -103,8 +103,10 @@ class GoogleSendEmailRequest(BaseModel):
     candidate_id: uuid.UUID = Field(..., description="Candidate recipient ID")
     subject: str = Field(..., min_length=1, max_length=500)
     body: str = Field(..., min_length=1)
+    html_body: Optional[str] = Field(default=None, description="Optional HTML version of the message for multipart/alternative")
     template_name: Optional[str] = Field(default="custom", description="Template name used, if any")
     thread_id: Optional[str] = Field(default=None, description="Gmail thread ID to reply within the same thread")
+    force_resend: bool = Field(default=False, description="Bypass idempotency check if recruiter explicitly wants to re-send")
 
 
 class GoogleSendEmailResponse(BaseModel):

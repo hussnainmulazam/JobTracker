@@ -1,0 +1,18 @@
+Hello Team,
+
+A new interview has been confirmed on the calendar for {{job_title}} at {{company_name}}. Please find the details below:
+
+SESSION DETAILS:
+- Candidate: {{candidate_name}} ({{candidate_email}})
+- Stage: {{round_name}} Interview
+- Date: {{date}}
+- Time: {{time}} ({{timezone}})
+- Meeting Link: {{meeting_link}}
+
+Please review the candidate's resume and interview scorecard prior to the call. Please log your interview notes promptly following the discussion.
+
+Recruiting Coordination
+{{hr_name}}
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

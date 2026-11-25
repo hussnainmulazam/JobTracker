@@ -1,0 +1,14 @@
+Dear {{candidate_name}},
+
+We noticed that you recently submitted an additional application for the {{job_title}} position at {{company_name}}.
+
+We want to reassure you that your initial application is already active in our evaluation queue. We have merged any updated materials into your existing candidate profile so our team has complete visibility.
+
+There is no further action required from your side at this stage. We will notify you directly as soon as our review is complete.
+
+Warm regards,
+{{hr_name}}
+Talent Acquisition Team
+{{company_name}}
+Email: {{company_email}}
+Website: {{company_website}}

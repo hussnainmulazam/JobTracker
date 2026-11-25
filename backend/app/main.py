@@ -101,6 +101,15 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting up %s (v%s)...", settings.PROJECT_NAME, settings.VERSION)
     if not is_testing:
+        # Validate FRONTEND_BASE_URL in production environment
+        env_mode = (getattr(settings, "ENVIRONMENT", None) or os.getenv("ENVIRONMENT") or "development").lower()
+        if env_mode in ("production", "prod"):
+            base_url = settings.frontend_base_url
+            if not base_url or "localhost" in base_url or "127.0.0.1" in base_url:
+                raise RuntimeError(
+                    f"CRITICAL CONFIGURATION ERROR: In production, FRONTEND_BASE_URL must be a valid public URL, but got '{base_url}'. "
+                    "Please set FRONTEND_BASE_URL in your environment (e.g. https://hrhiringloop.vercel.app)."
+                )
         try:
             init_db()
             logger.info("Database tables initialized successfully via Supabase.")
