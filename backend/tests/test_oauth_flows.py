@@ -8,6 +8,7 @@ import uuid
 import urllib.parse
 import pytest
 from unittest.mock import MagicMock
+from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from app.core.security import create_oauth_state, decode_oauth_state
@@ -98,15 +99,12 @@ def test_get_auth_google_redirect():
     assert "scope=" in target
 
 
-def test_get_auth_me_unauthorized_and_authorized():
+def test_get_auth_me_unauthorized_and_authorized(client: TestClient):
     """Verifies that GET /auth/me returns 401 when unauthenticated and 200 when authenticated via cookie or Bearer."""
-    from fastapi.testclient import TestClient
     from app.main import app
     from app.core.security import create_access_token
     from app.core.dependencies import get_current_user
     from app.models.user import User
-
-    client = TestClient(app)
 
     # 1. Unauthenticated -> 401
     unauth_resp = client.get("/auth/me")

@@ -14,13 +14,15 @@ logger = logging.getLogger(__name__)
 
 # Parse port and scheme from the database URL
 _parsed_url = urlsplit(settings.DATABASE_URL)
-_connect_args: dict = {"connect_timeout": 10}
-
-# Port 6543 is Supabase's transaction pooler (PgBouncer/Supavisor transaction mode).
-# In transaction mode, server-side prepared statements are unsupported and cause errors.
-# In psycopg 3, setting prepare_threshold=None disables prepared statements.
-if _parsed_url.port == 6543 or ":6543" in settings.DATABASE_URL:
-    _connect_args["prepare_threshold"] = None
+if "sqlite" in settings.sync_database_url:
+    _connect_args: dict = {"check_same_thread": False, "timeout": 10}
+else:
+    _connect_args: dict = {"connect_timeout": 10}
+    # Port 6543 is Supabase's transaction pooler (PgBouncer/Supavisor transaction mode).
+    # In transaction mode, server-side prepared statements are unsupported and cause errors.
+    # In psycopg 3, setting prepare_threshold=None disables prepared statements.
+    if _parsed_url.port == 6543 or ":6543" in settings.DATABASE_URL:
+        _connect_args["prepare_threshold"] = None
 
 # Create SQLModel engine ONCE at startup with connection pooling and quick connect timeout
 _engine_kwargs: dict = {

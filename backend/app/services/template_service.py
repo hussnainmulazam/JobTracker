@@ -58,6 +58,7 @@ class TemplateNotFoundError(TemplateMissingOrDisabledError):
 TEMPLATE_ALIASES: Dict[str, str] = {
     "interview_invitation": "initial_interview",
     "interview_invite": "initial_interview",
+    "candidate_followup": "no_response_followup",
     "application_rejected": "rejection",
     "interview_rejected": "rejection",
     "application_approved": "cv_passed",
@@ -451,6 +452,46 @@ def get_template_for_stage(
         matching = [t for t in templates if t.stage_key.lower() == stage_key.lower()]
 
     if not matching:
+        # Check if template is registered in templates/registry.json
+        try:
+            from app.services.pipeline_template_service import get_registry, REGISTRY_PATH
+            registry = get_registry()
+            reg_templates = registry.get("templates", {})
+            target_key = stage_key if stage_key in reg_templates else (resolved_key if resolved_key in reg_templates else None)
+            if target_key:
+                meta = reg_templates[target_key]
+                tpl_dir = os.path.dirname(REGISTRY_PATH) if os.path.exists(REGISTRY_PATH) else os.path.abspath("templates")
+                txt_file = os.path.join(tpl_dir, f"{target_key}.txt")
+                txt_content = ""
+                if os.path.exists(txt_file):
+                    with open(txt_file, "r", encoding="utf-8") as f:
+                        txt_content = f.read()
+
+                body_content = re.sub(r"\{\{([a-zA-Z0-9_]+)\}\}", r"{\1}", txt_content)
+                subject_content = re.sub(r"\{\{([a-zA-Z0-9_]+)\}\}", r"{\1}", meta.get("subject", target_key.replace("_", " ").title()))
+
+                now = datetime.now(timezone.utc)
+                new_tmpl = RecruitingTemplate(
+                    user_id=user_id,
+                    stage_key=target_key,
+                    name=meta.get("id", target_key).replace("_", " ").title(),
+                    description=meta.get("trigger_event", ""),
+                    subject=subject_content,
+                    body=body_content or "Hello {candidate_name},\n\nThank you for connecting with us.",
+                    is_active=True,
+                    is_default=True,
+                    is_custom=False,
+                    created_at=now,
+                    updated_at=now,
+                )
+                session.add(new_tmpl)
+                session.commit()
+                session.refresh(new_tmpl)
+                clear_user_template_cache(user_id)
+                return new_tmpl
+        except Exception as e:
+            logger.debug("Failed auto-seeding template from registry: %s", e)
+
         cfg = TEMPLATE_CONFIGS.get(resolved_key) or TEMPLATE_CONFIGS.get(stage_key)
         name = cfg.get("name", stage_key.replace("_", " ").title()) if cfg else stage_key
         raise TemplateMissingOrDisabledError(stage_name=name)
@@ -536,6 +577,20 @@ def render_user_template(
         normalized_ctx["booking_link"] = normalized_ctx["schedule_link"]
     if "job_description" in normalized_ctx and "job_details" not in normalized_ctx:
         normalized_ctx["job_details"] = normalized_ctx["job_description"]
+    if "brand_color" not in normalized_ctx:
+        normalized_ctx["brand_color"] = "#2563EB"
+    if "company_email" not in normalized_ctx:
+        normalized_ctx["company_email"] = "recruiting@company.com"
+    if "company_website" not in normalized_ctx:
+        normalized_ctx["company_website"] = "https://example.com"
+    if "timezone" not in normalized_ctx:
+        normalized_ctx["timezone"] = "UTC"
+    if "feedback" not in normalized_ctx:
+        normalized_ctx["feedback"] = "your qualifications and experience"
+    if "reply_deadline" not in normalized_ctx:
+        normalized_ctx["reply_deadline"] = "48 hours"
+    if "round_name" not in normalized_ctx:
+        normalized_ctx["round_name"] = "Initial Screening"
 
     # Candidate name is globally mandatory
     if not normalized_ctx.get("candidate_name"):

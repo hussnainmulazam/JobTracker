@@ -201,6 +201,11 @@ def send_email(
     response_model=EmailConversationsResponse,
     summary="List recruiting email conversations across candidates",
 )
+@router.get(
+    "/whatsapp/conversations",
+    response_model=EmailConversationsResponse,
+    include_in_schema=False,
+)
 def list_conversations(
     current_user: CurrentUser,
     session: SessionDep,

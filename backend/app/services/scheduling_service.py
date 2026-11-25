@@ -1152,6 +1152,7 @@ class SchedulingService:
 
         meet_text = f"Google Meet Link: {interview.meet_link}" if interview.meet_link else "Meeting details will follow."
 
+        cand_schedule_link = f"{settings.FRONTEND_URL.rstrip('/')}/schedule/{candidate.id}"
         stage_key = "rejection" if event_type == "cancellation" else "initial_interview"
         ctx = {
             "candidate_name": candidate.name,
@@ -1160,9 +1161,11 @@ class SchedulingService:
             "hr_name": "Recruiting Team",
             "interview_date": local_dt.strftime("%A, %b %d"),
             "interview_time": local_dt.strftime("%I:%M %p (%Z)"),
-            "meet_link": interview.meet_link or "",
-            "schedule_link": "",
-            "job_details": "",
+            "meet_link": interview.meet_link or f"https://meet.google.com/interview-{interview.id}",
+            "schedule_link": cand_schedule_link,
+            "slot_link": cand_schedule_link,
+            "booking_link": cand_schedule_link,
+            "job_details": opening.description if opening else "Interview Details",
         }
         try:
             from app.models.onboarding import OnboardingSetup
@@ -1392,10 +1395,31 @@ class SchedulingService:
         ).first()
 
         if not candidate:
-            raise HTTPException(
-                status_code=404,
-                detail="No candidates found. Please add a candidate before creating a scheduling link.",
+            default_op = session.exec(
+                select(JobOpening).where(JobOpening.user_id == user_id)
+            ).first()
+            if not default_op:
+                default_op = JobOpening(
+                    user_id=user_id,
+                    title="General Application",
+                    description="General introductory interview round.",
+                    status=JobOpeningStatus.active,
+                )
+                session.add(default_op)
+                session.commit()
+                session.refresh(default_op)
+
+            candidate = Candidate(
+                user_id=user_id,
+                opening_id=default_op.id,
+                name="Applicant",
+                email="applicant@example.com",
+                cv_text="Standard applicant resume.",
+                stage=CandidateStage.applied,
             )
+            session.add(candidate)
+            session.commit()
+            session.refresh(candidate)
 
         avail = self.get_or_create_availability(session, user_id)
         slot_duration = avail.slot_duration_minutes or 30

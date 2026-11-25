@@ -419,6 +419,16 @@ def extract_all_deterministic_fields(cv_text: str) -> Dict[str, Any]:
     }
 
 
+async def verify_url_resolves(url: str, timeout_seconds: float = 3.0) -> bool:
+    """Check if a URL resolves via an HTTP HEAD/GET probe."""
+    try:
+        async with httpx.AsyncClient(timeout=timeout_seconds, follow_redirects=True) as client:
+            resp = await client.head(url)
+            return resp.status_code < 400
+    except Exception:
+        return False
+
+
 async def extract_llm_gaps(
     cv_text: str,
     deterministic: Dict[str, Any],
@@ -727,6 +737,38 @@ class ExtractorService:
 
         candidate.extracted_data = cand_data.model_dump()
         session.add(candidate)
+
+        # Sync candidate_links in database & verify URLs
+        verified_map: Dict[str, Any] = {}
+        for l_type, l_url in [
+            ("github", candidate.github_url),
+            ("linkedin", candidate.linkedin_url),
+            ("portfolio", candidate.portfolio_url),
+            ("kaggle", candidate.kaggle_url),
+        ]:
+            if l_url:
+                is_ok = await verify_url_resolves(l_url) if verify_urls else None
+                verified_map[l_url] = is_ok
+                existing_link = session.exec(
+                    select(CandidateLink).where(
+                        CandidateLink.candidate_id == candidate.id,
+                        CandidateLink.link_type == l_type,
+                    )
+                ).first()
+                if not existing_link:
+                    session.add(
+                        CandidateLink(
+                            candidate_id=candidate.id,
+                            user_id=user_id,
+                            link_type=l_type,
+                            url=l_url,
+                            is_verified=is_ok,
+                        )
+                    )
+                else:
+                    existing_link.is_verified = is_ok
+                    session.add(existing_link)
+
         session.commit()
         session.refresh(candidate)
 
@@ -742,7 +784,7 @@ class ExtractorService:
             kaggle_url=candidate.kaggle_url,
             other_links=cand_data.other_links,
             field_metadata=preview.field_metadata,
-            links_verified={},
+            links_verified=verified_map,
         )
 
 

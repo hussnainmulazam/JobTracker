@@ -37,10 +37,34 @@ interface SendEmailDialogProps {
 }
 
 const EMAIL_TEMPLATES = [
-  { id: "interview_invitation", label: "Interview Invitation (with scheduling slot)" },
-  { id: "candidate_followup", label: "Candidate Follow-up / Evaluation Update" },
-  { id: "rejection", label: "Application Update / Polite Rejection" },
-  { id: "custom", label: "Custom Message" },
+  // Core Hiring & Screening
+  { id: "interview_invitation", label: "Interview Invitation (Screening Round)", group: "Core Hiring" },
+  { id: "application_approved", label: "Application Approved (Next Steps & Availability)", group: "Core Hiring" },
+  { id: "interview_confirmed", label: "Interview Confirmed (Meeting & Calendar Details)", group: "Core Hiring" },
+  { id: "alternate_slots", label: "Alternate Time Slots Proposed", group: "Core Hiring" },
+  { id: "next_round_availability", label: "Next Round Availability Request", group: "Core Hiring" },
+  { id: "interview_passed", label: "Interview Passed (Round Completed)", group: "Core Hiring" },
+  { id: "all_rounds_cleared", label: "All Rounds Cleared (Offer Preparation)", group: "Core Hiring" },
+  
+  // Follow-ups & Reminders
+  { id: "interview_reminder_24h", label: "Interview Reminder (24 Hours Prior)", group: "Follow-ups & Reminders" },
+  { id: "interview_reminder_1h", label: "Interview Reminder (1 Hour Prior)", group: "Follow-ups & Reminders" },
+  { id: "interview_rescheduled", label: "Interview Rescheduled Notice", group: "Follow-ups & Reminders" },
+  { id: "no_response_followup", label: "Candidate Follow-up / Check-in", group: "Follow-ups & Reminders" },
+  { id: "candidate_followup", label: "Candidate Status Update", group: "Follow-ups & Reminders" },
+  { id: "application_on_hold", label: "Application Status: On Hold", group: "Follow-ups & Reminders" },
+  
+  // Offers & Onboarding
+  { id: "offer_letter_cover", label: "Job Offer Letter & Compensation Package", group: "Offers & Onboarding" },
+  { id: "offer_accepted_confirmation", label: "Offer Accepted Confirmation", group: "Offers & Onboarding" },
+  { id: "welcome_onboarding", label: "Welcome to Team & Onboarding Guide", group: "Offers & Onboarding" },
+  
+  // Decisions
+  { id: "rejection", label: "Application Update / Polite Rejection", group: "Decisions & Closure" },
+  { id: "candidate_no_show", label: "Interview Follow-up (No-Show Check-in)", group: "Decisions & Closure" },
+  
+  // Custom
+  { id: "custom", label: "Custom Message (Write Your Own)", group: "Custom" },
 ];
 
 export function SendEmailDialog({
@@ -178,10 +202,14 @@ export function SendEmailDialog({
               onChange={(e) => handleTemplateChange(e.target.value)}
               className="w-full text-xs h-9 px-3 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
-              {EMAIL_TEMPLATES.map((tmpl) => (
-                <option key={tmpl.id} value={tmpl.id}>
-                  {tmpl.label}
-                </option>
+              {Array.from(new Set(EMAIL_TEMPLATES.map((t) => t.group))).map((group) => (
+                <optgroup key={group} label={group}>
+                  {EMAIL_TEMPLATES.filter((t) => t.group === group).map((tmpl) => (
+                    <option key={tmpl.id} value={tmpl.id}>
+                      {tmpl.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

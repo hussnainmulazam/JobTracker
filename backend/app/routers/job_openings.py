@@ -211,13 +211,31 @@ async def match_candidates_for_opening(
     # Verify opening exists and belongs to recruiter
     job_opening_service.get_by_id(session, current_user.id, opening_id)
 
+    candidates = session.exec(
+        select(Candidate).where(
+            Candidate.opening_id == opening_id,
+            Candidate.user_id == current_user.id,
+        )
+    ).all()
+
+    matched_count = 0
+    for cand in candidates:
+        if rerun or cand.score is None:
+            await candidate_service.score_candidate(session, current_user.id, cand.id, re_run=rerun)
+            matched_count += 1
+        else:
+            matched_count += 1
+
+    total = len(candidates)
+    pct = (matched_count / total * 100.0) if total > 0 else 100.0
+
     return MatchProgressStatus(
         opening_id=opening_id,
         status="in_progress",
-        total_candidates=0,
-        processed_candidates=0,
-        matched_candidates=0,
-        progress_percent=0.0,
+        total_candidates=total,
+        processed_candidates=matched_count,
+        matched_candidates=matched_count,
+        progress_percent=round(pct, 1),
         errors=[],
     )
 
@@ -239,13 +257,22 @@ def get_matching_progress(
 ) -> MatchProgressStatus:
     """Check the real-time background progress of CV matching for an opening."""
     job_opening_service.get_by_id(session, current_user.id, opening_id)
+    candidates = session.exec(
+        select(Candidate).where(
+            Candidate.opening_id == opening_id,
+            Candidate.user_id == current_user.id,
+        )
+    ).all()
+    matched = sum(1 for c in candidates if c.score is not None)
+    total = len(candidates)
+    pct = (matched / total * 100.0) if total > 0 else 100.0
     return MatchProgressStatus(
         opening_id=opening_id,
-        status="idle",
-        total_candidates=0,
-        processed_candidates=0,
-        matched_candidates=0,
-        progress_percent=0.0,
+        status="completed" if (total > 0 and matched == total) else "in_progress",
+        total_candidates=total,
+        processed_candidates=matched,
+        matched_candidates=matched,
+        progress_percent=round(pct, 1),
         errors=[],
     )
 

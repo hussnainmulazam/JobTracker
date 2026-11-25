@@ -8,6 +8,7 @@ All requests are routed through app.services.ai_router.AIRouter.
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
 
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -115,19 +116,11 @@ async def screen_candidate_cv(
     Calculates match score (0-100), matched skills, missing skills,
     red flags, executive summary, recommendation, and interview focus areas.
     """
-    import os
-    if os.getenv("TESTING") == "true":
-        return {
-            "score": 85.0,
-            "matched_skills": required_skills[:2] if required_skills else ["Python"],
-            "missing_skills": required_skills[2:] if len(required_skills) > 2 else [],
-            "red_flags": [],
-            "summary": f"Strong demonstrated skills for {job_title}.",
-            "recommendation": "Strong Match",
-            "interview_focus_areas": ["Architecture design"],
-            "model_used": "test-mock-model",
-            "latency_seconds": 0.05,
-        }
+    if not settings.OPENROUTER_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenRouter AI service is not configured. Missing OPENROUTER_API_KEY.",
+        )
 
     system_instruction = (
         "You are an elite corporate talent acquisition partner and technical recruiter.\n"
@@ -172,10 +165,12 @@ async def screen_candidate_cv(
         {"role": "user", "content": user_prompt},
     ]
 
+    models = settings.get_models_for_task("screening")
     validated, model_used, latency = await ai_router.complete_with_chain(
         task_name="screening",
         messages=messages,
         validation_schema=CandidateScreenLLMOutput,
+        models=models,
     )
 
     res_dict = {
@@ -203,6 +198,12 @@ async def generate_recruiter_interview_questions(
     """
     Generate targeted interview questions using questions model chain.
     """
+    if not settings.OPENROUTER_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenRouter AI service is not configured. Missing OPENROUTER_API_KEY.",
+        )
+
     system_instruction = (
         "You are a principal technical recruiter and interviewer.\n"
         "Generate insightful, high-signal interview questions for hiring managers to ask.\n"
@@ -226,10 +227,12 @@ async def generate_recruiter_interview_questions(
         {"role": "user", "content": user_prompt},
     ]
 
+    models = settings.get_models_for_task("questions")
     validated, model_used, latency = await ai_router.complete_with_chain(
         task_name="questions",
         messages=messages,
         validation_schema=InterviewQuestionsLLMOutput,
+        models=models,
     )
 
     cleaned = [str(q).strip() for q in validated.questions if str(q).strip()]

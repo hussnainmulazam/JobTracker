@@ -227,20 +227,10 @@ class AIRouter:
           - If 429 indicates daily free-models limit, activates 1-hour lockout
             and raises friendly 429 error.
         """
-        import os
-        import sys
-        if os.getenv("TESTING") == "true" or "pytest" in sys.modules:
-            if validation_schema is not None:
-                try:
-                    return validation_schema(), "mock-test-model", 0.001
-                except Exception:
-                    pass
-            return "Test AI response", "mock-test-model", 0.001
-
         call_timeout = min(timeout or self.timeout, 15.0)
 
         # ── 1. PRIMARY TIER: Grok / Groq (High-Speed Inference) ─────────────────
-        grok_info = self._get_grok_client()
+        grok_info = self._get_grok_client() if not models else None
         if grok_info:
             grok_client, grok_base, grok_models, provider_name = grok_info
             for g_model in grok_models:

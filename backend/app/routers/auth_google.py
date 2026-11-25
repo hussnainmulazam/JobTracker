@@ -32,6 +32,7 @@ router = APIRouter(tags=["Google OAuth2 & Workspace"])
 
 @router.get(
     "/auth/google",
+    operation_id="auth_google_redirect",
     summary="Redirect to Google OAuth2 consent screen for login/signup",
 )
 def auth_google():
@@ -49,6 +50,7 @@ def auth_google():
 
 @router.get(
     "/auth/google/callback",
+    operation_id="auth_google_callback",
     summary="Google OAuth2 callback redirect handler (Login and Workspace flows)",
 )
 def google_callback(
@@ -176,16 +178,13 @@ def get_auth_me(current_user: CurrentUser) -> UserPublic:
 
 @router.get(
     "/auth/google/login",
+    operation_id="auth_google_workspace_login",
     response_model=GoogleAuthUrlResponse,
     summary="Get Google Workspace OAuth2 authorization URL",
 )
 @router.get(
-    "/api/v1/auth/google/login",
-    response_model=GoogleAuthUrlResponse,
-    summary="Get Google Workspace OAuth2 authorization URL (API v1 alias)",
-)
-@router.get(
     "/integrations/google/url",
+    operation_id="auth_google_workspace_url_alias",
     response_model=GoogleAuthUrlResponse,
     summary="Get Google Workspace OAuth2 authorization URL (alias)",
 )

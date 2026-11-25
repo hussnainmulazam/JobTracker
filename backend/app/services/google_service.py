@@ -52,7 +52,7 @@ from app.services.extractor_service import extract_all_deterministic_fields
 
 logger = logging.getLogger(__name__)
 
-# Required Google Workspace API Scopes as specified by user (exactly 8 scopes)
+# Required Google Workspace API Scopes (includes 8 core scopes plus Meet, Sheets, Docs, Drive)
 WORKSPACE_SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -61,7 +61,11 @@ WORKSPACE_SCOPES = [
     "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/calendar.freebusy",
+    "https://www.googleapis.com/auth/meetings.space.created",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
 ]
 GOOGLE_SCOPES = WORKSPACE_SCOPES
 
@@ -464,6 +468,9 @@ class GoogleService:
         granted_services = {
             "Gmail": any("gmail" in s for s in granted_norms),
             "Calendar": any("calendar" in s for s in granted_norms),
+            "Meet": any("meetings" in s or "calendar" in s for s in granted_norms),
+            "Sheets": any("spreadsheets" in s for s in granted_norms),
+            "Docs": any("documents" in s for s in granted_norms),
             "Drive": any("drive" in s for s in granted_norms),
         }
 
@@ -955,6 +962,18 @@ class GoogleService:
                     matched_candidate.updated_at = datetime.now(timezone.utc)
                     self.session.add(matched_candidate)
 
+                    # Update candidate lifecycle stage & audit log
+                    try:
+                        from app.services.outreach_service import outreach_service
+                        outreach_service.handle_candidate_reply(
+                            session=self.session,
+                            candidate_id=matched_candidate.id,
+                            reply_snippet=message_body or snippet or "",
+                        )
+                    except Exception as reply_err:
+                        logger.warning("Could not handle candidate reply stage transition: %s", reply_err)
+
+                    # Instant alert to HR
                     try:
                         from app.services.agent_settings_service import agent_settings_service
                         agent_settings_service.notify_hr_instant(
@@ -967,6 +986,20 @@ class GoogleService:
                         )
                     except Exception as alert_err:
                         logger.warning("Could not send instant reply alert to HR: %s", alert_err)
+
+                    # Candidate response analysis & agent email share/draft
+                    try:
+                        self.handle_agent_reply_automation(
+                            user_id=user_id,
+                            account=account,
+                            candidate=matched_candidate,
+                            subject=subject,
+                            message_body=message_body or snippet or "",
+                            thread_id=thread_id,
+                            opening_title=target_opening_title,
+                        )
+                    except Exception as auto_err:
+                        logger.warning("Candidate reply automation failed: %s", auto_err)
 
                 # Record in emails_synced
                 if msg_id not in existing_synced_ids:
@@ -1204,6 +1237,127 @@ class GoogleService:
             errors=errors,
             last_synced_at=now,
         )
+
+    # ── 6.5. Inbound Candidate Reply Analysis & Agent Dispatch ───────────────
+
+    def handle_agent_reply_automation(
+        self,
+        user_id: uuid.UUID,
+        account: GoogleAccount,
+        candidate: Candidate,
+        subject: str,
+        message_body: str,
+        thread_id: Optional[str] = None,
+        opening_title: Optional[str] = None,
+    ) -> None:
+        """
+        Analyzes inbound candidate email response, detects candidate intent,
+        selects the corresponding HR template, and either auto-dispatches (if auto_reply_enabled)
+        or creates a pending AI draft in Message for recruiter 1-click review.
+        """
+        lower_body = (message_body or "").lower()
+        role = opening_title or "the position"
+        cand_name = candidate.name.split()[0] if candidate.name else "there"
+        clean_sub = subject.replace("Re:", "").replace("RE:", "").strip() if subject else f"Application for {role}"
+        reply_subject = f"Re: {clean_sub}"
+
+        # 1. Offer Acceptance
+        if any(w in lower_body for w in ["accept the offer", "thrilled to accept", "look forward to joining", "happy to accept", "signed the offer"]):
+            template_key = "offer_accepted_confirmation"
+            reply_body = (
+                f"Hi {cand_name},\n\n"
+                f"We are thrilled that you have accepted our offer for {role}! "
+                f"Our team is currently preparing your welcome and onboarding package. "
+                f"We will share all starting details shortly.\n\n"
+                f"Welcome aboard!\nBest regards,\nTalent Acquisition Team"
+            )
+        # 2. Offer Declined
+        elif any(w in lower_body for w in ["decline the offer", "pursue another", "decided to reject", "withdrawing my acceptance"]):
+            template_key = "offer_declined_acknowledgement"
+            reply_body = (
+                f"Hi {cand_name},\n\n"
+                f"Thank you for letting us know. We appreciate your consideration and wish you all the best in your career.\n\n"
+                f"Best regards,\nTalent Acquisition Team"
+            )
+        # 3. Reschedule / Conflict
+        elif any(w in lower_body for w in ["reschedule", "can't make it", "conflict", "different time", "postpone", "cancel my slot"]):
+            template_key = "alternate_slots"
+            booking_link = f"{settings.FRONTEND_URL.rstrip('/')}/schedule/{candidate.id}"
+            reply_body = (
+                f"Hi {cand_name},\n\n"
+                f"No problem at all! Please choose an alternative time that works best for your schedule here:\n"
+                f"{booking_link}\n\n"
+                f"Looking forward to speaking with you!\nBest regards,\nTalent Acquisition Team"
+            )
+        # 4. Availability / Agreement to meet
+        elif any(w in lower_body for w in ["available", "monday", "tuesday", "wednesday", "thursday", "friday", "pm", "am", "works for me", "sounds good", "confirm"]):
+            template_key = "interview_confirmed"
+            reply_body = (
+                f"Hi {cand_name},\n\n"
+                f"Thank you for confirming your availability for {role}! "
+                f"We have noted your preferred time and are finalizing the calendar invitation. "
+                f"You will receive a Google Calendar invite with the video meeting link shortly.\n\n"
+                f"Best regards,\nTalent Acquisition Team"
+            )
+        # 5. General follow-up / question
+        else:
+            template_key = "candidate_followup"
+            reply_body = (
+                f"Hi {cand_name},\n\n"
+                f"Thank you for your update regarding the {role} position. "
+                f"We have received your message and our team will get back to you shortly.\n\n"
+                f"Best regards,\nTalent Acquisition Team"
+            )
+
+        now = datetime.now(timezone.utc)
+
+        if account.auto_reply_enabled:
+            # Auto-dispatch email via Gmail API
+            try:
+                self.send_email(
+                    user_id=user_id,
+                    request=GoogleSendEmailRequest(
+                        candidate_id=candidate.id,
+                        subject=reply_subject,
+                        body=reply_body,
+                        template_name=template_key,
+                        thread_id=thread_id,
+                    ),
+                )
+                logger.info("Agent auto-dispatched '%s' reply to %s", template_key, candidate.email)
+            except Exception as send_err:
+                logger.error("Failed to auto-dispatch agent reply: %s", send_err)
+        else:
+            # Create pending AI draft message in DB for recruiter approval
+            draft_msg = Message(
+                candidate_id=candidate.id,
+                user_id=user_id,
+                direction=MessageDirection.outbound,
+                channel="email",
+                message_type=MessageType.email,
+                body=reply_body,
+                status=MessageStatus.pending,
+                created_at=now,
+                template_name=template_key,
+                template_variables={
+                    "subject": reply_subject,
+                    "thread_id": thread_id,
+                    "ai_agent_generated": True,
+                    "intent": template_key,
+                },
+            )
+            self.session.add(draft_msg)
+            self.session.commit()
+
+            audit_log_service.record(
+                session=self.session,
+                user_id=user_id,
+                candidate_id=candidate.id,
+                opening_id=candidate.opening_id,
+                action="agent_reply_drafted",
+                details=json.dumps({"intent": template_key, "subject": reply_subject}),
+            )
+            logger.info("Agent drafted '%s' reply for candidate %s pending recruiter approval", template_key, candidate.email)
 
     # ── 7. Email Templates & Preview ─────────────────────────────────────────
 

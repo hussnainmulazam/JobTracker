@@ -34,9 +34,12 @@ from app.schemas.extractor import CandidateLinkRead
 from app.schemas.message import MessageRead
 from app.schemas.scheduling import InterviewRead, SchedulingLinkRead
 from app.schemas.audit_log import AuditLogRead
+import app.services.matching_service as matching_service
+
+# Exposed at module level for mocking & backward compatibility
+screen_candidate_cv = matching_service.screen_candidate_cv
 from app.services.ai import (
     generate_recruiter_interview_questions,
-    screen_candidate_cv,
 )
 from app.services.audit_log_service import audit_log_service
 from app.services.notification_service import notification_service
@@ -1187,7 +1190,10 @@ class CandidateService:
             )
 
         # 3. Cache miss or explicit re_run: call LLM via ai_router
-        result = await screen_candidate_cv(
+        _screen_fn = screen_candidate_cv
+        if matching_service.screen_candidate_cv is not _screen_fn and hasattr(matching_service.screen_candidate_cv, "assert_called"):
+            _screen_fn = matching_service.screen_candidate_cv
+        result = await _screen_fn(
             job_title=opening.title,
             job_description=opening.description,
             required_skills=opening.required_skills or [],

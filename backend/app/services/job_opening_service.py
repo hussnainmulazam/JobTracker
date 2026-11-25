@@ -96,12 +96,12 @@ class JobOpeningService:
         user_id: uuid.UUID,
         opening_id: uuid.UUID,
     ) -> JobOpeningRead:
-        cache_key = f"requisition:detail:{opening_id}"
+        opening = self.get_by_id(session, user_id, opening_id)
+        cache_key = f"requisition:detail:{user_id}:{opening_id}"
         cached = cache_service.get(cache_key)
         if cached is not None:
             return JobOpeningRead.model_validate(cached)
 
-        opening = self.get_by_id(session, user_id, opening_id)
         count_stmt = select(func.count(Candidate.id)).where(Candidate.opening_id == opening_id)
         candidates_count = session.exec(count_stmt).one() or 0
 
